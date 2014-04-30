@@ -55,6 +55,8 @@ class Review(PrimaryModel, Base):
     tracklist_id = Column('tracklist_id', Integer, ForeignKey('tracklists.id'))
 
 class Track(PrimaryModel, Base):
+    artist_id = Column('artist_id', Integer, ForiegnKey('artists.id'))
+    artist = relationship('Artist', uselist=False)
     length = Column('length', Integer)
     stream = deferred(Column('stream', String(36), unique=True), group='streaming')
     location = deferred(Column('location', String(256), unique=True), group='streaming')
