@@ -1,135 +1,72 @@
 import os
+from hashlib import sha256
 
-from tinytag import TinyTag as _TinyTag
+from mutagenx import File
+from .models import db, Album, Artist, Track
 
-from .models import db, Artist, Album, Track
+valid_types=('m4a', 'flac', 'mp3', 'ogg', 'oga')
 
-def walk(basedir, ignore=None):
-    assert os.path.isdir(basedir), "Walk must be provided a directory."
-    for f in os.listdir(basedir):
-        # keep full path around for ease of use
-        fp = os.path.join(basedir, f)
 
-        if ignore and ignore(basedir, f):
+def find(basedir, valid_types=valid_types):
+    '''Utilize os.walk to only select out the files we'd like to potentially
+    parse and yield them one at a time.'''
+    basedir = os.path.abspath(basedir)
+    for current, dirs, files in os.walk(basedir):
+        if not files:
             continue
+        for file in files:
+            if file.endswith(valid_types):
+                yield os.path.join(os.path.abspath(current), file)
 
-        elif os.path.isdir(fp):
-            # In the words of Dave Beazly
-            # Punt this off to another thing
-            # Yield from is the ultimate "Not my problem"
-            yield from walk(fp, ignore)
+def adaptor(track):
+    stream = "{}{}{}{}".format(
+        track['artist'][0], track['album'][0], 
+        track['tracknumber'][0], track['tracknumber'][0]
+        )
+    stream = stream.encode('ascii', 'xmlcharrefreplace')
+    stream = sha256(stream).hexdigest()
 
-        else:
-            # must be a file we want
-            yield fp
+    return dict(
+        artist=track['artist'][0],
+        album=track['album'][0],
+        position=int(track['tracknumber'][0].split('/')[0]),
+        length=int(track.info.length),
+        location=track.filename,
+        name=track['title'][0],
+        stream=stream
+        )
 
-def ignore(basedir, f):
-    valid_types = ('mp3', 'wav', 'ogg', 'oga', 'flac')
-
-    fp = os.path.join(basedir, f)
-
-    # ignore hidden files and directories
-    if f.startswith('.'):
-        return True
-
-    # ignore files that don't match our allowed extensions
-    elif os.path.isfile(fp) and not f.lower().endswith(valid_types):
-        return True
-
-    else:
-        return False
-
-
-def fixer(value, ignore=(AttributeError, UnicodeEncodeError), handle=None):
-    '''Actual fixer function for the fix_track function.'''
-
-    try:
-        value = value.encode('latin-1').decode('utf-8').strip()
-        # matching \x03 END OF TEXT is frustrating
-        # just strip out any non-printable characters
-        value = ''.join(c for c in value if c.isprintable())
-    except ignore as e:
-        # optionally handle these errors
-        if handle:
-            handle(e)
-    finally:
-        # return the value regardless of if we fixed it
-        return value
-
-def fix_track(
-    track, 
-    fields=('artist', 'album', 'title', 'track', 'year', 'track_total'),
-    int_convert=('track', 'year', 'track_total'),
-    fixer=fixer
-    ):
-    '''Accepts a TinyTag or similiar object and attempts to fix it.
-    
-    * fields: A group of fields that require attention.
-    * int_convert: a subset of fields that should be integers
-    * fixer: the function that fixes the fields
-    '''
-
-    for f in fields:
-        value = getattr(track, f)
-        if not value:
-            # value is likely none
-            # there's no point in processing it
-            continue
-        else:
-            value = fixer(value)
-
-        if f in int_convert:
-            try:
-                value = int(value)
-            except ValueError:
-                # won't convert for some reason
-                # set value to 0 since we're expecting
-                # an int on the other side
-                value = 0
-
-        setattr(track, f, value)
-    
-    # TinyTag stores duration as a float
-    track.duration = int(track.duration)
-
-    # allows us to be flexible
-    return track
-
-def TinyTag(track):
-    '''wrapper function to TinyTag.get that automatically
-    fixes track issues for us.'''
-    return fix_track(_TinyTag.get(track), fixer=fixer)
-
-adaptor = lambda t: {
-    'artist':t.artist,
-    'album':t.album,
-    'name':t.title,
-    'position':t.track,
-    'length':t.duration
-    }
-
-
-def store_metadata(track, adaptor=adaptor):
-    '''Accepts a TinyTag object and an optional adaptor and breaks the metadata
-    into useable pieces for the SQLAlchemy models.
-    '''
+def adapt_track(track, adaptor=adaptor):
 
     info = adaptor(track)
 
-    artist = Artist.query.filter_by(name=info['artist']).first()
+    artist = Artist.query.filter(Artist.name == info['artist']).first()
     if not artist:
         artist = Artist(name=info['artist'])
         db.session.add(artist)
     info['artist'] = artist
 
-    album = Album.query.filter_by(name=info['album'], artist=artist).first()
+    album = Album.query.filter(Album.name==info['album']).first()
     if not album:
         album = Album(name=info['album'], artist=artist)
         db.session.add(album)
     info['album'] = album
 
-    track = Track(**info)
-    db.session.add(track)
-    db.session.commit()
+    track = Track.query.filter(Track.name==info['name'])
+    track = track.filter(Track.album_id==album.id)
+    track = track.first()
+    if not track:
+        track = Track(**info)
+        db.session.add(track)
+
     return artist, album, track
 
+
+def store_directory(basedir, valid_types=valid_types, adaptor=adaptor):
+    for file in find(basedir, valid_types):
+        file = File(file, easy=True)
+        artist, album, track = adapt_track(file)
+        print(
+            " * Storing: {0.name} - {1.name} - {2.position:2>0} - {2.name}"
+            "".format(artist, album, track))
+        db.session.commit()

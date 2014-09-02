@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, abort, send_file
 from flask.ext.restful import Api, Resource
 
 from .factory import create_app
@@ -50,8 +50,8 @@ class ListAlbum(Resource):
 
 class ListTrack(Resource):
     def get(self):
-        page = requet.args.get('page', default=1, type=int)
-        limit = request.args.get('limit', default=1, type=int)
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=10, type=int)
 
         q = Track.query.join(Artist,Album)
         q = q.filter(Artist.id==Album.artist_id,Album.id==Track.album_id)
@@ -59,6 +59,15 @@ class ListTrack(Resource):
         page = q.paginate(page, limit, False)
         
         return {'tracks':TrackSerializer(page.items, many=True).data}
+
+@app.route('/stream/<stream_id>', methods=['GET'])
+def stream(stream_id):
+    track = Track.query.filter(Track.stream==stream_id).first()
+    if not track:
+        abort(404)
+
+    filename = track.location
+    return send_file(filename)
 
 api.add_resource(SingleArtist, '/artist/<id>/', endpoint='artist')
 api.add_resource(ListArtist, '/artist/', endpoint='artists')

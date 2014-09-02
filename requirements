@@ -12,6 +12,6 @@ flask-marshmallow==0.2.0
 ipython==2.2.0
 itsdangerous==0.24
 marshmallow==0.7.0
+mutagenx==1.24
 pytz==2014.4
 six==1.7.3
-tinytag==0.6.1
