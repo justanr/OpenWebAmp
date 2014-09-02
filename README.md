@@ -10,9 +10,7 @@ Use
 
 Currently, the only way to add tracks is through the Flask-Script manager script.
 
-    ```python
     python manager.py add -d /path/to/audio/directory/
-    ```
 
 That will search the directory for applicable files, open them, parse them and stuff them into the database.
 
