@@ -8,11 +8,19 @@ FlaskAmp is attempt to build a web based music player.
 Use
 ---
 
-Currently, the only real way to use FlaskAmp is use the `manager.py add -d` command. `-d` (or `--dir`) should be a directory with TinyTag compatible tracks.
+Currently, the only way to add tracks is through the Flask-Script manager script.
+
+    ```python
+    python manager.py add -d /path/to/audio/directory/
+    ```
 
 That will search the directory for applicable files, open them, parse them and stuff them into the database.
 
 After that, you can use `/album/`, `/artist/`, and `/track/` as well their `<id>` option to view the data.
+
+You can also currently stream audio by navigating to `/stream/<stream_id>/`. For now, the streaming is handled by Flask and whichever WSGI server is handling it.
+
+Obviously, this will need to be changed since an actual web server will handle static files better.
 
 Why?
 ----
