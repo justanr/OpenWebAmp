@@ -1,6 +1,41 @@
 from flask.ext.sqlalchemy import SQLAlchemy
+from .utils.perms import Permissions
 
 db = SQLAlchemy()
+
+class Member(db.Model):
+    __tablename__ = 'members'
+
+    id = db.Column('id', db.Integer, primary_key=True)
+    name = db.Column(
+        'name', db.Unicode, index=True, 
+        unique=True, nullable=False
+        )
+
+    bio = db.Column(
+        'bio', db.UnicodeText, 
+        default='Nickelback is my favorite band.'
+        )
+
+    email = db.Column(
+        'email', db.Unicode(256), unique=True, 
+        index=True, nullable=False
+        )
+
+    permissions = db.Column(
+        'permissions', db.Integer,
+        default=(
+            Permissions.STREAM |
+            Permissions.REVIEW |
+            Permissions.TAG
+            ),
+        index=True
+        )
+
+    def can(self, permission):
+        return self.permissions is not None and \
+            (self.permissions & permission) == permission
+
 
 class Artist(db.Model):
     __tablename__ = 'artists'
@@ -27,7 +62,6 @@ class Album(db.Model):
     tracks = db.relationship(
         'Track', 
         backref=db.backref('album', uselist=False), 
-        lazy='immediate',
         order_by='Track.position'
         )
 

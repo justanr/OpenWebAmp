@@ -1,15 +1,18 @@
 from flask import request, abort, send_file
 from flask.ext.restful import Api, Resource
-
-from .factory import create_app
+from .utils.factory import create_app
+from .utils import Permissions
+from .config import configs
 from .models import db, Artist, Album, Track
 from .serializers import ma, ArtistSerializer, AlbumSerializer, TrackSerializer
 
 
-# Setup
 
-app = create_app('dev', exts=[db, ma])
+# Setup
+config = configs.get('dev')
+app = create_app(__name__, config, exts=[db, ma])
 api = Api(app)
+
 
 # API Endpoints
 class SingleArtist(Resource):
