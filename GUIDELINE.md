@@ -16,16 +16,27 @@ The most important point here is to follow PEP8 as closely as possible. Such as:
     * If class variables are created, there are two blank lines between them and __init__
 * Use white space to logically break up expressions.
 
-##Docstrings
+##Docstrings and Comments
+Docstrings are for the benefit of the person using your code. Comments are for the person editing your code.
+
 All files must have docstrings. All classes must have docstrings. All functions must have docstrings.
 
 There are, of course, always exceptions. 
 
 * A function or method that is brief (five to ten lines max) may forego docstrings if the logic is clear and it is well named.
+* An init method that is purely accepting arguments into the object may forego docstrings.
+* Dunder methods like repr, str, and len may forego docstrings.
+* Dunder methods like get, set, del require docstrings.
+* Other dunder methods like iter and next are left to best judgement if a docstring is required.
 * A file that serves only as a namespace for variables and is well named, may forego docstrings.
-* A 'pivot' or 'mapper' or 'many_to_many' table may forego docstrings.
+* A 'pivot' or 'mapper' or 'many_to_many' tables may forego docstrings. These tables and models are defined as primiarly serving as just a many-to-many mapper with no more than two native attributes (TrackPosition, for example is many-to-many mapper that contains `position`, a native attribute).
+* A marshmallow schema metaclass may forgo docstrings.
 
 Docstrings should be written in Sphinx compliant rst.
+
+Comments should be used to clarify code in particular. Inline comments are discouraged, but not forbidden.
+
+Code should never be commented out. If it is example code, it belongs in a docstring.
 
 ##Exceptions
 Python defines *many* exceptions in the standard library. When considering a custom exception, it must subclass at least FlaskAmpError and it must be appropriately vague.
