@@ -17,7 +17,13 @@ class ArtistSerializer(ma.Serializer):
 
 class AlbumSerializer(ma.Serializer):
     artist = ma.Nested('ArtistSerializer', exclude=('albums',))
-    tracks = ma.Nested('TrackSerializer', exclude=('album', 'artist'), many=True)
+    tracks = ma.Nested(
+        'TrackSerializer', 
+        exclude=(
+            'album', 
+            'artist'
+            ), 
+        many=True)
 
     links = ma.Hyperlinks({
         'self' : ma.URL('album', id='<id>'),

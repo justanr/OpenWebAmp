@@ -11,7 +11,14 @@ def add(dir):
 
 @manager.shell
 def _shell_context():
-    return dict(app=app, db=db, ma=ma, models=models, serials=serializers, utils=utils)
+    return dict(
+        app=app, 
+        db=db, 
+        ma=ma, 
+        models=models, 
+        serials=serializers, 
+        utils=utils
+        )
 
 if __name__ == "__main__":
     manager.run()

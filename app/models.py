@@ -12,17 +12,23 @@ class Member(db.Model):
     id = db.Column('id', db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
     name = db.Column(
-        'name', db.Unicode, index=True, 
-        unique=True, nullable=False
+        'name', db.Unicode, 
+        index=True, 
+        unique=True, 
+        nullable=False
         )
     bio = db.Column(
-        'bio', db.UnicodeText, 
+        'bio', 
+        db.UnicodeText, 
         default='Nickelback is my favorite band.'
         )
 
     email = db.Column(
-        'email', db.Unicode(256), unique=True, 
-        index=True, nullable=False
+        'email', 
+        db.Unicode(256), 
+        unique=True, 
+        index=True, 
+        nullable=False
         )
 
     permissions = db.Column(
@@ -63,12 +69,18 @@ class Artist(db.Model):
     name = db.Column('name', db.Unicode, unique=True)
     albums = db.relationship(
         'Album', 
-        backref=db.backref('artist', uselist=False),
+        backref=db.backref(
+            'artist', 
+            uselist=False
+            ),
         order_by='Album.name'
         )
     tracks = db.relationship(
         'Track', 
-        backref=db.backref('artist', uselist=False),
+        backref=db.backref(
+            'artist', 
+            uselist=False
+            ),
         lazy='noload'
         )
 
@@ -80,7 +92,10 @@ class Album(db.Model):
     artist_id = db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'))
     tracks = db.relationship(
         'Track', 
-        backref=db.backref('album', uselist=False), 
+        backref=db.backref(
+            'album', 
+            uselist=False
+            ),
         order_by='Track.position'
         )
 
