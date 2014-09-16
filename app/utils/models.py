@@ -37,7 +37,7 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, *args, **kwargs):
         return cache[key]
     else:
         with session.no_autoflush:
-            q = session.query.(cls)
+            q = session.query(cls)
             q = queryfunc(q, *args, **kwargs)
             obj = q.first()
 
@@ -48,7 +48,7 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, *args, **kwargs):
         cache[key] = obj
         return obj
  
- class UniqueMixin:
+class UniqueMixin:
     '''Actually implements the unique object recipe for models.
     '''
 

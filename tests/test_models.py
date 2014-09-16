@@ -1,4 +1,5 @@
 import unittest
+from uuid import uuid4
 
 from app import configs, create_app, db, models, Permissions
 
@@ -78,3 +79,76 @@ class MemberTestCase(ModelTestCase):
         u1 = models.Member.find_or_create(session=db.session, **members[2])
         u2 = models.Member.find_or_create(session=db.session, **members[2])
         self.assertTrue(u1 is u2)
+
+
+class ArtistTestCase(ModelTestCase):
+    
+    def test_add_album(self):
+        thefoobars = models.Artist(name='The Foo Bars')
+        self.assertFalse(len(thefoobars.albums))
+
+        thefoobars.albums.append(models.Album(name="Foobar'd"))
+        self.assertTrue(len(thefoobars.albums))
+
+class AlbumTestCase(ModelTestCase):
+   
+    def setUp(self):
+        self.thefoobars = models.Artist(name='The Foo Bars')
+        self.tracks = [
+            models.Track(
+                name='Baz',
+                stream=str(uuid4()),
+                position=1,
+                length=244,
+                artist=self.thefoobars,
+                location='/1'
+                ),
+            models.Track(
+                name='Spam',
+                stream=str(uuid4()),
+                position=2,
+                length=244,
+                artist=self.thefoobars,
+                location='/2'             
+                )
+            ]
+        db.session.add(self.thefoobars)
+        db.session.add_all(self.tracks)
+
+    def tearDown(self):
+        db.session.remove()
+
+    def test_artist_owned(self):
+        foo_bar_d = models.Album(name="Foo Bar'd", artist=self.thefoobars)
+        self.assertTrue(foo_bar_d.artist == self.thefoobars)
+
+    def test_add_tracks(self):
+        foo_bar_d = models.Album(name="Foo Bar'd", artist=self.thefoobars)
+        self.assertFalse(len(foo_bar_d.tracks))
+
+        foo_bar_d.tracks.extend(self.tracks)
+        self.assertTrue(len(foo_bar_d.tracks) == 2)
+
+class TrackTestCase(ModelTestCase):
+    
+    def setUp(self):
+        self.thefoobars = models.Artist(name='The Foo Bars')
+        self.foo_bar_d = models.Album(name="Foo Bar'd", artist=self.thefoobars)
+        db.session.add(self.thefoobars)
+
+    def tearDown(self):
+        db.session.remove()
+
+    def test_artist_owned(self):
+        baz = models.Track(
+            name='Baz',
+            length=244,
+            position=1,
+            artist=self.thefoobars,
+            album=self.foo_bar_d,
+            location='/',
+            stream=str(uuid4())
+            )
+
+        db.session.add(baz)
+        self.assertTrue(baz.artist is self.thefoobars)
