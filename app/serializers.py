@@ -1,58 +1,27 @@
 from flask.ext.marshmallow import Marshmallow
 
-# Serializers
+from .utils.schema import Polymorphic, Length
 
-ma = Marshmallow()
+# lowest common fields for serialized models
+common = ('id', 'name')
 
-class ArtistSerializer(ma.Serializer):
-    albums = ma.Nested('AlbumSerializer', exclude=('artist',), many=True)
-
-    links = ma.Hyperlinks({
-        'self' : ma.URL('artist', id='<id>'),
-        'collection' : ma.URL('artists')
-        })
-
+class BaseSchema(ma.Serializer):
     class Meta:
-        fields = ('id', 'name', 'albums', 'links')
+        additional = common
 
-class AlbumSerializer(ma.Serializer):
-    artist = ma.Nested('ArtistSerializer', exclude=('albums',))
-    tracks = ma.Nested(
-        'TrackSerializer', 
-        exclude=(
-            'album', 
-            'artist'
-            ), 
-        many=True)
+class AlbumSchema(BaseSchema):
+    artist = ma.Nested('ArtistSchema', only=common)
 
-    links = ma.Hyperlinks({
-        'self' : ma.URL('album', id='<id>'),
-        'collection' : ma.URL('albums')
-    })
+class ArtistSchema(BaseSchema):
+    albums = ma.Nested('AlbumSchema', only=common, many=True)
+    tracks = ma.Nested('TrackSchema', exclude=('album', 'artist'), many=True)
 
-    class Meta:
-        fields = ('id', 'artist', 'name', 'tracks', 'links')
+class MemberSchema(BaseSchema):
+    bio = ma.String()
 
-class TrackSerializer(ma.Serializer):
-    artist = ma.Nested('ArtistSerializer', only=('name', 'links'))
-    album = ma.Nested('AlbumSerializer', only=('name', 'links'))
-    length = ma.Method('convert_time')
-
-    links = ma.Hyperlinks({
-        'self' : ma.URL('track', id='<id>'),
-        'collection' : ma.URL('tracks')
-    })
-
-    def convert_time(self, track):
-        mins = track.length//60
-        seconds = track.length - (mins * 60)
-        return "{!s:0>2}:{!s:0>2}".format(mins, seconds)
-
-
-    class Meta:
-        fields = (
-            'id', 'artist', 'album' ,'name', 
-            'position', 'length', 
-            'links', 'stream'
-            )
-
+class TrackSchema(BaseSchema):
+    length = Length()
+    position = ma.Integer()
+    stream = ma.String()
+    artist = ma.Nested('ArtistSchema', only=common)
+    album = ma.Nested('AlbumSchema', only=common)
