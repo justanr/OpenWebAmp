@@ -49,7 +49,7 @@ def _convert_seconds_to_time(seconds, units=_time_units):
 
     return ':'.join(parts)
 
-class Polymorphic(fields.Field):
+class Polymorphic(fields.Raw):
     '''Allows nesting of several potential schemas inside of a single field.
     This field should be used with `marshmallow.fields.List` if a collection of
     polymorphic objects is given.
@@ -108,7 +108,7 @@ class Polymorphic(fields.Field):
 
         return serializer.data
 
-class Length(fields.Field):
+class Length(fields.Raw):
     '''Wrapper around _convert_seconds_to_time for use with Marshmallow schemas.
     '''
 
