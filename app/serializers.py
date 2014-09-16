@@ -5,6 +5,8 @@ from .utils.schema import Polymorphic, Length
 # lowest common fields for serialized models
 common = ('id', 'name')
 
+ma = Marshmallow()
+
 class BaseSchema(ma.Serializer):
     class Meta:
         additional = common

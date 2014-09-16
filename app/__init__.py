@@ -1,11 +1,11 @@
 from flask import request, abort, send_file
 from flask.ext.restful import Api, Resource
-from .utils.factory import create_app
-from .utils import Permissions
+
 from .config import configs
 from .models import db, Artist, Album, Track
-from .serializers import ma, ArtistSerializer, AlbumSerializer, TrackSerializer
-
+from .serializers import ma, ArtistSchema, AlbumSchema, TrackSchema
+from .utils.factory import create_app
+from .utils import Permissions
 
 
 # Setup
@@ -18,17 +18,17 @@ api = Api(app)
 class SingleArtist(Resource):
     def get(self, id):
         artist = Artist.query.get_or_404(id)
-        return {'artist':ArtistSerializer(artist).data}
+        return {'artist':ArtistSchema(artist).data}
 
 class SingleAlbum(Resource):
     def get(self, id):
         album = Album.query.get_or_404(id)
-        return {'album':AlbumSerializer(album).data}
+        return {'album':AlbumSchema(album).data}
 
 class SingleTrack(Resource):
     def get(self, id):
         track = Track.query.get_or_404(id)
-        return {'track':TrackSerializer(track).data}
+        return {'track':TrackSchema(track).data}
 
 class ListArtist(Resource):
     def get(self):
@@ -38,7 +38,7 @@ class ListArtist(Resource):
         q = Artist.query.order_by(Artist.name)
         page = q.paginate(page, limit, False)
         
-        return {'artists':ArtistSerializer(page.items, many=True).data}
+        return {'artists':ArtistSchema(page.items, many=True).data}
 
 class ListAlbum(Resource):
     def get(self):
@@ -49,7 +49,7 @@ class ListAlbum(Resource):
         q = q.order_by(Artist.name, Album.name)
         page = q.paginate(page, limit, False)
         
-        return {'albums':AlbumSerializer(page.items, many=True).data}
+        return {'albums':AlbumSchema(page.items, many=True).data}
 
 class ListTrack(Resource):
     def get(self):
@@ -61,7 +61,7 @@ class ListTrack(Resource):
         q = q.order_by(Artist.name, Album.name, Track.position)
         page = q.paginate(page, limit, False)
         
-        return {'tracks':TrackSerializer(page.items, many=True).data}
+        return {'tracks':TrackSchema(page.items, many=True).data}
 
 @app.route('/stream/<stream_id>', methods=['GET'])
 def stream(stream_id):
