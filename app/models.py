@@ -1,12 +1,19 @@
+from uuid import uuid4
+from datetime import datetime
+
 from flask.ext.sqlalchemy import SQLAlchemy
+
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.orderinglist import ordering_list
 
 from werkzeug import generate_password_hash, check_password_hash
 
+from .utils.models import ReprMixin, UniqueMixin
 from .utils.perms import Permissions
 
 db = SQLAlchemy()
 
-class Member(db.Model):
+class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
     id = db.Column('id', db.Integer, primary_key=True)
@@ -22,7 +29,6 @@ class Member(db.Model):
         db.UnicodeText, 
         default='Nickelback is my favorite band.'
         )
-
     email = db.Column(
         'email', 
         db.Unicode(256), 
@@ -30,7 +36,6 @@ class Member(db.Model):
         index=True, 
         nullable=False
         )
-
     permissions = db.Column(
         'permissions', db.Integer,
         default=(
@@ -61,8 +66,16 @@ class Member(db.Model):
         return self.permissions is not None and \
             (self.permissions & permission) == permission
 
+    @classmethod
+    def unique_hash(cls, name, email, **kwargs):
+        return name, email
 
-class Artist(db.Model):
+    @classmethod
+    def unique_func(cls, query, name, email, **kwargs):
+        return query.filter(cls.name == name, cls.email == email)
+
+
+class Artist(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'artists'
     
     id = db.Column('id', db.Integer, primary_key=True)
@@ -84,6 +97,14 @@ class Artist(db.Model):
         lazy='noload'
         )
 
+    @classmethod
+    def unique_hash(cls, name, **kwargs):
+        return name
+
+    @classmethod
+    def unique_func(cls, query, name, **kwargs):
+        return query.filter(cls.name == name)
+
 class Album(db.Model):
     __tablename__ = 'albums'
 
@@ -99,6 +120,14 @@ class Album(db.Model):
         order_by='Track.position'
         )
 
+    @classmethod
+    def unique_hash(cls, name, artist, **kwargs):
+        return name, artist
+
+    @classmethod
+    def unique_func(cls, query, name, artist, **kwargs):
+        return query.filter(cls.name == name, cls.artist_id == artist.id)
+
 class Track(db.Model):
     __tablename__ = 'tracks'
 
@@ -110,3 +139,15 @@ class Track(db.Model):
     album_id = db.Column('album_id', db.Integer, db.ForeignKey('albums.id'))
     location = db.Column('location', db.Unicode, unique=True)
     stream = db.Column('stream', db.String, unique=True)
+
+    @classmethod
+    def unique_hash(cls, name, artist, location,  **kwargs):
+        return name, artist, location
+
+    @classmethod
+    def unique_func(cls, session, name, artist, location,  **kwargs):
+        return query.filter(
+            cls.name == name, 
+            cls.artist_id == artist.id,
+            cls.location == location
+            )
