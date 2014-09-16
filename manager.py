@@ -1,3 +1,5 @@
+import unittest
+
 from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.script import Manager
 
@@ -20,6 +22,12 @@ def _shell_context():
         serials=serializers, 
         utils=utils
         )
+
+@manager.command
+def test():
+    tests = unittest.TestLoader().discover('tests')
+    unittest.TextTestRunner(verbosity=2).run(tests)
+
 
 manager.add_command('db', MigrateCommand)
 
