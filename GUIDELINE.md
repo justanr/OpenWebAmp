@@ -29,10 +29,9 @@ There are, of course, always exceptions.
 * Dunder methods like get, set, del require docstrings.
 * Other dunder methods like iter and next are left to best judgement if a docstring is required.
 * A file that serves only as a namespace for variables and is well named, may forego docstrings.
-* A 'pivot' or 'mapper' or 'many_to_many' tables may forego docstrings. These tables and models are defined as primiarly serving as just a many-to-many mapper with no more than two native attributes (TrackPosition, for example is many-to-many mapper that contains `position`, a native attribute).
-* A marshmallow schema metaclass may forgo docstrings.
+* Schemas and model *classes* may forgo docstrings -- the purposes of these classes are typically obvious. Details may be given. Any methods require docstrings unless they are brief and well named.
 
-Docstrings should be written in Sphinx compliant rst.
+Docstrings should be written in Sphinx compliant reST.
 
 Comments should be used to clarify code in particular. Inline comments are discouraged, but not forbidden.
 
@@ -170,9 +169,26 @@ Declared attributes and hybrid properties supercede `__init__` as the first meth
 ###Schema specific guidelines
 
 * All schemas are named for what they serialize and end with Schema. A Member schema is named MemberSchema.
-* Versioned schemas, due to Marshmallow's `class_registry` system, are a sole exception to class naming conventions.
-    * Versioned schemas begin with VX_ where X is the current major version of the API.
-    * If marshmallow's class_registry system changes to accomodate versioned APIs, this must immediately change.
 * All schemas inherit from a BaseSchema class.
 * BaseSchema defines areas common to all schemas in it's group. Including the Meta options class.
 * Schemas propagated to the API must map directly to defined data models. Non-compliant schemas are considered a bug.
+* When calling schemas by string, a fully qualified path must be given.
+    * `app.api.v1.schemas.MemberSchema` is needed for MemberSchema located in `app/api/v1/schemas`
+    * `MemberSchema` is unaccepable.
+
+###Test specific guidelines
+
+* Test cases and test methods do not warrant docstrings.
+* Test cases must be general and well named (i.e. `ModelTestCase`).
+* Test methods must be specific and well named (i.e. `test_password_salts_are_different`)
+* Test cases should test against a specific class or collected set of functionality.
+    * Stuffing every test for Models inside of `ModelTestCase` is unacceptable.
+    * Testing multiple views in a blueprint is acceptable.
+
+####Test Setup
+* Every test should define setUp and tearDown where needed.
+* If certain test fixtures are to be shared inside of a single test case, then setUpClass and tearDownClass must be used.
+    * Application context and database connections belong in setUpClass/tearDownClass
+    * Testing specific data against multiple methods is left to best judgement.
+* If certain test fixtures are to be shared between multiple test cases, setUpModule and tearDownModule must be used.
+    * An integration test against multiple models would require this.
