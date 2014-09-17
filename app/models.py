@@ -16,31 +16,33 @@ db = SQLAlchemy()
 class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
-    id = db.Column('id', db.Integer, primary_key=True)
+    id = db.Column( db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
+    playlists = db.relationship(
+        'Playlist', 
+        backref='owner', 
+        order_by='Playlist.name'
+        )
     name = db.Column(
-        'name', db.Unicode, 
+        db.Unicode, 
         index=True, 
         unique=True, 
         nullable=False
         )
     bio = db.Column(
-        'bio', 
         db.UnicodeText, 
         default='Nickelback is my favorite band.'
         )
     email = db.Column(
-        'email', 
         db.Unicode(256), 
         unique=True, 
         index=True, 
         nullable=False
         )
     permissions = db.Column(
-        'permissions', db.Integer,
+        db.Integer,
         default=(
             Permissions.STREAM |
-            Permissions.REVIEW |
             Permissions.TAG
             ),
         index=True
@@ -78,24 +80,14 @@ class Member(db.Model, ReprMixin, UniqueMixin):
 class Artist(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'artists'
     
-    id = db.Column('id', db.Integer, primary_key=True)
-    name = db.Column('name', db.Unicode, unique=True)
-    albums = db.relationship(
-        'Album', 
-        backref=db.backref(
-            'artist', 
-            uselist=False
-            ),
-        order_by='Album.name'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(
+        db.Unicode, 
+        unique=True,
+        index=True,
+        nullable=False
         )
-    tracks = db.relationship(
-        'Track', 
-        backref=db.backref(
-            'artist', 
-            uselist=False
-            ),
-        lazy='noload'
-        )
+    albums = db.relationship('Album', backref='owner', order_by='Album.name')
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -105,40 +97,26 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
     def unique_func(cls, query, name, **kwargs):
         return query.filter(cls.name == name)
 
-class Album(db.Model):
-    __tablename__ = 'albums'
-
-    id = db.Column('id', db.Integer, primary_key=True)
-    name = db.Column('name', db.Unicode)
-    artist_id = db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'))
-    tracks = db.relationship(
-        'Track', 
-        backref=db.backref(
-            'album', 
-            uselist=False
-            ),
-        order_by='Track.position'
-        )
-
-    @classmethod
-    def unique_hash(cls, name, artist, **kwargs):
-        return name, artist
-
-    @classmethod
-    def unique_func(cls, query, name, artist, **kwargs):
-        return query.filter(cls.name == name, cls.artist_id == artist.id)
-
 class Track(db.Model):
     __tablename__ = 'tracks'
 
-    id = db.Column('id', db.Integer, primary_key=True)
-    name = db.Column('name', db.Unicode)
-    length = db.Column('length', db.Integer)
-    position = db.Column('position', db.Integer)
-    artist_id = db.Column('artist_id', db.Integer, db.ForeignKey('artists.id'))
-    album_id = db.Column('album_id', db.Integer, db.ForeignKey('albums.id'))
-    location = db.Column('location', db.Unicode, unique=True)
-    stream = db.Column('stream', db.String, unique=True)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.UnicodeText, index=True)
+    artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
+    artist = db.relationship('Artist', backref='tracks')
+    length = db.Column(db.Integer)
+    position = db.Column(db.Integer)
+    location = db.Column(db.Unicode, unique=True)
+    _trackpositions = db.relationship('TrackPosition', backref='track')
+    # association_proxy allows easy access to an attribute on a
+    # foreign relationship. In this case, the tracklist attribute
+    # is being passed from the intermediate TrackPosition model
+    tracklists = association_proxy('_trackpositions', 'tracklist')
+    stream = db.Column(
+        db.String, 
+        unique=True,
+        default=lambda: str(uuid4())
+        )
 
     @classmethod
     def unique_hash(cls, name, artist, location,  **kwargs):
@@ -151,3 +129,99 @@ class Track(db.Model):
             cls.artist_id == artist.id,
             cls.location == location
             )
+
+class TrackPosition(db.Model, ReprMixin):
+    '''A many-to-many between the Track model and the Tracklist parent model.
+    
+    Information in this model is generated automatically by appending a track
+    to a Tracklist's `tracks` attribute.
+    '''
+
+    __tablename__ = 'trackpositions'
+    __repr_fields = ['tracklist', 'position', 'track']
+
+    id = db.Column(db.Integer, primary_key=True)
+    position = db.Column(db.Integer)
+    track_id = db.Column(db.Integer, db.ForeignKey('tracks.id'), index=True)
+    tracklist_id = db.Column(
+        db.Integer,
+        db.ForeignKey('tracklists.id'),
+        index=True
+        )
+
+    
+class Tracklist(db.Model, ReprMixin, UniqueMixin):
+    __tablename__ = 'tracklists'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode(128), index=True, nullable=False)
+    type = db.Column(db.String(32))
+    _trackpositions = db.relationship(
+        'TrackPosition',
+        backref='tracklist',
+        # ordering_list will automatically update the position attribute
+        # on the proxied Tracks. However, it must also be fed a correct
+        # inital ordering.
+        order_by='TrackPosition.position',
+        collection_class=ordering_list('position')
+        )
+    tracks = association_proxy(
+        '_trackpositions',
+        'tracks',
+        # A creator is needed to ensure we can simply append track
+        # objects to a Tracklist's `track` attribute. The position
+        # attribute is automatically filled in by ordering_list
+        creator=lambda t: TrackPosition(track=t)
+        )
+
+    @property
+    def length(self):
+        '''Sums the length of all track objects associated with this tracklist.
+        '''
+        # TODO: Convert this to a `hybrid_property` so it is queryable
+        return sum(t.track.length for t in self.tracks)
+
+    @classmethod
+    def unique_hash(cls, name, owner, **kwargs):
+        return name, owner
+
+    @classmethod
+    def unique_func(cls, query, name, owner, **kwargs):
+        return query.filter(cls.name == name, cls.owner_id == owner.id)
+
+    __mapper_args__ = {
+        'polymorphic_on' : type,
+        'with_polymorphic' : '*'
+        }
+
+class Album(Tracklist):
+    __tablename__ = 'albums'
+
+    local_id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('artists.id'),
+        primary_key=True
+        )
+
+    __mapper_args__ = {
+        'polymorphic_identity' : 'album',
+        'inherit_condition' : (local_id == Tracklist.id)
+        }
+
+class Playlist(Tracklist):
+    __tablename__ = 'playlists'
+
+    local_id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(
+        db.Integer,
+        db.ForeignKey('members.id'),
+        primary_key=True
+        )
+
+    __mapper_args__ = {
+        'polymorphic_identity' : 'playlist',
+        'inherit_condition' : (local_id == Tracklist.id)
+        }
+
+
