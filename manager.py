@@ -3,7 +3,34 @@ import unittest
 from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.script import Manager
 
-from app import app, db, ma, models, serializers, utils
+from app import (
+    # extensions
+    api, db, ma,
+
+    # factory methods
+    create_app, 
+
+    # configuration
+    configs, 
+
+    # needed modules
+    models, schemas, utils,
+
+    # blueprints
+    Stream
+    )
+
+config = configs['dev']
+
+exts = [api, db, ma]
+bps = [Stream]
+
+app = create_app(
+    __name__, 
+    config, 
+    exts=exts,
+    blueprints=bps
+    )
 
 manager = Manager(app)
 migrate = Migrate(app, db)
@@ -19,7 +46,7 @@ def _shell_context():
         db=db, 
         ma=ma, 
         models=models, 
-        serials=serializers, 
+        schemas=schemas, 
         utils=utils
         )
 

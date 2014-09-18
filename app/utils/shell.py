@@ -3,7 +3,8 @@ from uuid import uuid4
 from time import time
 
 from mutagenx import File
-from ..models import db, Album, Artist, Track
+
+#from ..models import db, Album, Artist, Track
 
 valid_types=('m4a', 'flac', 'mp3', 'ogg', 'oga')
 

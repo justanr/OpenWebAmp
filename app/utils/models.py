@@ -87,13 +87,13 @@ class ReprMixin:
 
     # Most models will have both an id and name fields
     # This can be overwritten if needed
-    __repr_fields = ['id', 'name']
+    __repr_fields__ = ['id', 'name']
 
     def __repr__(self):
-        fields =  {f:getattr(self, f, '<BLANK>') for f in self.__repr_fields}
+        fields =  {f:getattr(self, f, '<BLANK>') for f in self.__repr_fields__}
         # constructs a dictionary compatible pattern for formatting
         # {{{0}}} becomes {id} for example
-        pattern = ['{0}={{{0}}}'.format(f) for f in self.__repr_fields]
+        pattern = ['{0}={{{0}}}'.format(f) for f in self.__repr_fields__]
         pattern = ' '.join(pattern)
         pattern = pattern.format(**fields)
         return '<{} {}>'.format(self.__class__.__name__, pattern)
