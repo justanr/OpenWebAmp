@@ -11,19 +11,26 @@ class BaseSchema(ma.Serializer):
     class Meta:
         additional = common
 
-class AlbumSchema(BaseSchema):
-    artist = ma.Nested('ArtistSchema', only=common)
+class TracklistSchema(BaseSchema): 
+    tracks = ma.Nested('TrackSchema', only=common, many=True)
+    owner = Polymorphic(
+        mapping={
+            'Member' : 'MemberSchema',
+            'Artist' : 'ArtistSchema'
+            },
+        default_schema='BaseSchema',
+        only=common
+        )
 
 class ArtistSchema(BaseSchema):
-    albums = ma.Nested('AlbumSchema', only=common, many=True)
-    tracks = ma.Nested('TrackSchema', exclude=('album', 'artist'), many=True)
+    albums = ma.Nested('TracklistSchema', only=common, many=True)
 
 class MemberSchema(BaseSchema):
     bio = ma.String()
+    playlists = ma.Nested('TracklistSchema', only=common, many=True)
 
 class TrackSchema(BaseSchema):
     length = Length()
-    position = ma.Integer()
     stream = ma.String()
     artist = ma.Nested('ArtistSchema', only=common)
-    album = ma.Nested('AlbumSchema', only=common)
+    tracklists = ma.Nested('TracklistSchema', only=common, many=True)

@@ -97,21 +97,26 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
     def unique_func(cls, query, name, **kwargs):
         return query.filter(cls.name == name)
 
-class Track(db.Model):
+class Track(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'tracks'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.UnicodeText, index=True)
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
-    artist = db.relationship('Artist', backref='tracks')
     length = db.Column(db.Integer)
-    position = db.Column(db.Integer)
     location = db.Column(db.Unicode, unique=True)
     _trackpositions = db.relationship('TrackPosition', backref='track')
     # association_proxy allows easy access to an attribute on a
     # foreign relationship. In this case, the tracklist attribute
     # is being passed from the intermediate TrackPosition model
     tracklists = association_proxy('_trackpositions', 'tracklist')
+    artist = db.relationship(
+        'Artist', 
+        backref=db.backref(
+            'tracks',
+            lazy='dynamic'
+            )
+        )
     stream = db.Column(
         db.String, 
         unique=True,
@@ -123,7 +128,7 @@ class Track(db.Model):
         return name, artist, location
 
     @classmethod
-    def unique_func(cls, session, name, artist, location,  **kwargs):
+    def unique_func(cls, query, name, artist, location,  **kwargs):
         return query.filter(
             cls.name == name, 
             cls.artist_id == artist.id,
@@ -138,7 +143,7 @@ class TrackPosition(db.Model, ReprMixin):
     '''
 
     __tablename__ = 'trackpositions'
-    __repr_fields = ['tracklist', 'position', 'track']
+    __repr_fields__ = ['tracklist', 'position', 'track']
 
     id = db.Column(db.Integer, primary_key=True)
     position = db.Column(db.Integer)
@@ -167,7 +172,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         )
     tracks = association_proxy(
         '_trackpositions',
-        'tracks',
+        'track',
         # A creator is needed to ensure we can simply append track
         # objects to a Tracklist's `track` attribute. The position
         # attribute is automatically filled in by ordering_list
@@ -197,7 +202,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
 class Album(Tracklist):
     __tablename__ = 'albums'
 
-    local_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, db.ForeignKey('tracklists.id'), primary_key=True)
     owner_id = db.Column(
         db.Integer,
         db.ForeignKey('artists.id'),
@@ -206,13 +211,13 @@ class Album(Tracklist):
 
     __mapper_args__ = {
         'polymorphic_identity' : 'album',
-        'inherit_condition' : (local_id == Tracklist.id)
+        'inherit_condition' : (id == Tracklist.id)
         }
 
 class Playlist(Tracklist):
     __tablename__ = 'playlists'
 
-    local_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, db.ForeignKey('tracklists.id'), primary_key=True)
     owner_id = db.Column(
         db.Integer,
         db.ForeignKey('members.id'),
@@ -221,7 +226,7 @@ class Playlist(Tracklist):
 
     __mapper_args__ = {
         'polymorphic_identity' : 'playlist',
-        'inherit_condition' : (local_id == Tracklist.id)
+        'inherit_condition' : (id == Tracklist.id)
         }
 
 
