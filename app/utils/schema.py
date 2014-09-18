@@ -45,9 +45,9 @@ def _convert_seconds_to_time(seconds, units=_time_units):
             result.append('{:0>2}'.format(part))
     
     if len(result) == 1:
-        results.insert(0, '00')
+        result.insert(0, '00')
 
-    return ':'.join(parts)
+    return ':'.join(result)
 
 class Polymorphic(fields.Raw):
     '''Allows nesting of several potential schemas inside of a single field.
