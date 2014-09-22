@@ -69,12 +69,12 @@ class Member(db.Model, ReprMixin, UniqueMixin):
             (self.permissions & permission) == permission
 
     @classmethod
-    def unique_hash(cls, name, email, **kwargs):
-        return name, email
+    def unique_hash(cls, email, **kwargs):
+        return email
 
     @classmethod
-    def unique_func(cls, query, name, email, **kwargs):
-        return query.filter(cls.name == name, cls.email == email)
+    def unique_func(cls, query, email, **kwargs):
+        return query.filter(cls.email == email)
 
 
 class Artist(db.Model, ReprMixin, UniqueMixin):
@@ -234,7 +234,7 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'tags'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Unicode(64), unique=True, primary_key=True)
+    name = db.Column(db.Unicode(64), unique=True)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
