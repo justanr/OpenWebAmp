@@ -184,7 +184,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         '''Sums the length of all track objects associated with this tracklist.
         '''
         # TODO: Convert this to a `hybrid_property` so it is queryable
-        return sum(t.track.length for t in self.tracks)
+        return sum(t.length for t in self.tracks)
 
     @classmethod
     def unique_hash(cls, name, owner, **kwargs):
