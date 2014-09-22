@@ -16,7 +16,7 @@ db = SQLAlchemy()
 class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
-    id = db.Column( db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
     playlists = db.relationship(
         'Playlist', 
@@ -124,11 +124,11 @@ class Track(db.Model, ReprMixin, UniqueMixin):
         )
 
     @classmethod
-    def unique_hash(cls, name, artist, location,  **kwargs):
+    def unique_hash(cls, name, artist, location, **kwargs):
         return name, artist, location
 
     @classmethod
-    def unique_func(cls, query, name, artist, location,  **kwargs):
+    def unique_func(cls, query, name, artist, location, **kwargs):
         return query.filter(
             cls.name == name, 
             cls.artist_id == artist.id,
@@ -230,3 +230,59 @@ class Playlist(Tracklist):
         }
 
 
+class Tag(db.Model, ReprMixin, UniqueMixin):
+    __tablename__ = 'tags'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode(64), unique=True, primary_key=True)
+
+    @classmethod
+    def unique_hash(cls, name, **kwargs):
+        return name
+
+    @classmethod
+    def unique_func(cls, query, name, **kwargs):
+        return query.filter(cls.name == name)
+
+class MemberTaggedArtist(db.Model, ReprMixin):
+    __tablename__ = 'membertaggedartists'
+    __repr_fields__ = ['id', 'tag', 'member', 'artist']
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(
+        db.Integer,
+        db.ForeignKey('members.id'),
+        primary_key=True
+        )
+    artist_id = db.Column(
+        db.Integer,
+        db.ForeignKey('artists.id'),
+        primary_key=True
+        )
+    tag_id = db.Column(
+        db.Integer,
+        db.ForeignKey('tags.id'),
+        primary_key=True
+        )
+
+    member = db.relationship(
+        'Member',
+        backref=db.backref(
+            'tags',
+            lazy='dynamic'
+            )
+        )
+    artist = db.relationship(
+        'Artist',
+        backref=db.backref(
+            'tags',
+            lazy='dynamic'
+            )
+        )
+    tag = db.relationship(
+        'Tag',
+        backref=db.backref(
+            'artists',
+            lazy='dynamic'
+            )
+        )
