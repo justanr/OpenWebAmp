@@ -4,7 +4,7 @@ from time import time
 
 from mutagenx import File
 
-#from ..models import db, Album, Artist, Track
+from .. import models
 
 valid_types=('m4a', 'flac', 'mp3', 'ogg', 'oga')
 
@@ -16,7 +16,7 @@ def find(basedir, valid_types=valid_types):
     for current, dirs, files in os.walk(basedir):
         if not files:
             continue
-        for file in files:
+        for file in sorted(files):
             if file.endswith(valid_types):
                 yield os.path.join(os.path.abspath(current), file)
 
@@ -24,38 +24,29 @@ def adaptor(track):
     return dict(
         artist=track['artist'][0],
         album=track['album'][0],
-        position=int(track['tracknumber'][0].split('/')[0]),
         length=int(track.info.length),
         location=track.filename,
         name=track['title'][0],
-        stream=str(uuid4())
         )
 
 def adapt_track(track, adaptor=adaptor):
 
     info = adaptor(track)
 
-    artist = Artist.query.filter(Artist.name == info['artist']).first()
-    if not artist:
-        artist = Artist(name=info['artist'])
-        db.session.add(artist)
+    artist = models.Artist.find_or_create(
+        models.db.session,
+        name=info['artist']
+        )
+    album = models.Album.find_or_create(
+        models.db.session,
+        name=info.pop('album'),
+        owner=artist
+        )
     info['artist'] = artist
-
-    album = Album.query.filter(Album.name==info['album']).first()
-    if not album:
-        album = Album(name=info['album'], artist=artist)
-        db.session.add(album)
-    info['album'] = album
-
-    track = Track.query.filter(Track.name==info['name'])
-    track = track.filter(Track.album_id==album.id)
-    track = track.first()
-    if not track:
-        track = Track(**info)
-        db.session.add(track)
+    track = models.Track.find_or_create(models.db.session, **info)
+    album.tracks.append(track)
 
     return artist, album, track
-
 
 def store_directory(basedir, valid_types=valid_types, adaptor=adaptor):
     start = time()
@@ -66,10 +57,10 @@ def store_directory(basedir, valid_types=valid_types, adaptor=adaptor):
         try:
             artist, album, track = adapt_track(file)
             print(
-                " * Storing: {0.name} - {1.name} - {2.position:2>0} - {2.name}"
+                " * Storing: {0.name} - {1.name} - {2.name}"
                 "".format(artist, album, track))
             i += 1
-            db.session.commit()
+            models.db.session.commit()
         except KeyError:
             pass
     

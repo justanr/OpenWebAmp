@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from flask.ext.migrate import Migrate, MigrateCommand
@@ -20,7 +21,16 @@ from app import (
     Stream
     )
 
-config = configs['dev']
+from app.utils import shell
+
+
+config = os.environ.get('FLASK_AMP_ENV', 'default')
+
+if config not in configs.keys():
+    config = 'default'
+
+config = configs.get(config)
+
 
 exts = [api, db, ma]
 bps = [Stream]
@@ -37,7 +47,7 @@ migrate = Migrate(app, db)
 
 @manager.option('-d', '--dir', dest='dir')
 def add(dir):
-    utils.store_directory(dir)
+    shell.store_directory(dir)
 
 @manager.shell
 def _shell_context():
@@ -47,7 +57,8 @@ def _shell_context():
         ma=ma, 
         models=models, 
         schemas=schemas, 
-        utils=utils
+        utils=utils,
+        config=config
         )
 
 @manager.command
