@@ -12,18 +12,24 @@ class BaseConfig:
 
 class DevConfig(BaseConfig):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV-DATABASE-URI') or \
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URI') or \
         'sqlite:///{}'.format(os.path.join(basedir, 'dev-sqlite.db'))
 
 class TestConfig(BaseConfig):
     TESTING = True
     MARSHMALLOW_STRICT = True
     MARSHMALLOW_DATEFORMAT = 'rfc'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST-DATABASE-URI') or \
+    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URI') or \
         'sqlite:///{}'.format(os.path.join(basedir, 'test-sqlite.db'))
+
+class ProdConfig(BaseConfig):
+    SQLALCHEMY_DATABASE_URI = os.environ.get('PROD_DATABASE_URI') or \
+        'sqlite:///{}'.format(os.path.join(basedir, 'why-is-prod-here.db'))
+
 
 configs = {
     'dev'     : DevConfig,
     'testing' : TestConfig,
+    'prod'    : ProdConfig,
     'default' : DevConfig
     }
