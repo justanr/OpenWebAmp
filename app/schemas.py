@@ -29,6 +29,8 @@ class TracklistSchema(BaseSchema):
 
     length = Length()
 
+    total_tracks = ma.Integer()
+
     links = ma.Hyperlinks({
         'self' : ma.URL('tracklist', id='<id>', _external=True),
         'collection' : ma.URL('tracklists', _external=True)

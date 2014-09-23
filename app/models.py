@@ -186,6 +186,12 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # TODO: Convert this to a `hybrid_property` so it is queryable
         return sum(t.length for t in self.tracks)
 
+    @property
+    def total_tracks(self):
+        '''Provides the total number of tracks in a tracklist.'''
+        #TODO: Convert this it `hybrid_property` so it is queryable
+        return len(self.tracks)
+
     @classmethod
     def unique_hash(cls, name, owner, **kwargs):
         return name, owner
