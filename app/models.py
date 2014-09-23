@@ -1,6 +1,7 @@
 from uuid import uuid4
 from datetime import datetime
 
+from flask import current_app
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -89,6 +90,25 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
         )
     albums = db.relationship('Album', backref='owner', order_by='Album.name')
 
+    def get_tags(self):
+        q = self._tags
+        q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
+        q = q.add_columns(
+            db.func.count(MemberTaggedArtist.member_id).label('count'),
+            )
+        q = q.add_entity(Tag)
+        q = q.group_by(MemberTaggedArtist.tag_id)
+        q = q.order_by(db.desc('count'))
+        q = q.order_by(Tag.name)
+
+        return q
+
+    @property
+    def top_tags(self):
+        limit = current_app.config['TOP_TAG_LIMIT']
+        tags = self.get_tags().paginate(1, limit, False).items
+        return tags
+
     @classmethod
     def unique_hash(cls, name, **kwargs):
         return name
@@ -152,6 +172,25 @@ class TrackPosition(db.Model, ReprMixin):
         db.Integer,
         db.ForeignKey('tracklists.id'),
         index=True
+        )
+    
+    __table_args__ = (
+        db.UniqueConstraint(
+            # Ensure each track can only appear
+            # in each tracklist position once
+            # the OrderingList extension *should*
+            # ensure this, but explicitly enforcing
+            # it in the database logic is good too
+            'position',
+            'track_id',
+            'tracklist_id',
+            name='uq_trackposition'
+            ),
+        db.CheckConstraint(
+            # Ensure that a track can't appear
+            # in an unacceptable position
+            'position > -1'
+            )
         )
 
     
@@ -252,37 +291,45 @@ class MemberTaggedArtist(db.Model, ReprMixin):
     member_id = db.Column(
         db.Integer,
         db.ForeignKey('members.id'),
-        primary_key=True
         )
     artist_id = db.Column(
         db.Integer,
         db.ForeignKey('artists.id'),
-        primary_key=True
         )
     tag_id = db.Column(
         db.Integer,
         db.ForeignKey('tags.id'),
-        primary_key=True
         )
 
     member = db.relationship(
         'Member',
         backref=db.backref(
-            'tags',
+            '_tags',
             lazy='dynamic'
             )
         )
     artist = db.relationship(
         'Artist',
         backref=db.backref(
-            'tags',
+            '_tags',
             lazy='dynamic'
             )
         )
     tag = db.relationship(
         'Tag',
         backref=db.backref(
-            'artists',
+            '_artists',
             lazy='dynamic'
             )
+        )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            # Ensures that each member can only 
+            # tag an artist once with each tag.
+            'member_id',
+            'artist_id',
+            'tag_id',
+            name='uq_mta'
+            ),
         )
