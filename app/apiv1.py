@@ -25,7 +25,7 @@ class SingleMember(Resource):
 class SingleTracklist(Resource):
     def get(self, id):
         tracklist = models.Tracklist.query.get_or_404(id)
-        return {'tracklist' : schemas.TracklistSchema(playlist).data}
+        return {'tracklist' : schemas.TracklistSchema(tracklist).data}
 
 class ListArtist(Resource):
     def get(self):
@@ -52,11 +52,20 @@ class ListTracklist(Resource):
     def get(self):
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=10, type=int)
+        tl_type = request.args.get('type', default=None)
 
         q = models.Tracklist.query.order_by(models.Tracklist.name)
+
+        if tl_type and tl_type in ['album', 'playlist']:
+            q = q.filter(models.Tracklist.type == tl_type)
+
         page = q.paginate(page, limit, False)
 
-        serializer = schemas.TracklistSchema(page.items, many=True)
+        serializer = schemas.TracklistSchema(
+            page.items, 
+            exclude=('tracks',),
+            many=True
+            )
 
         return {'tracklists' : serializer.data}
 
