@@ -6,6 +6,11 @@ class BaseConfig:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_RECORD_QUERIES = False
 
+    TOP_TAG_LIMIT = 15
+
+    MARSHMALLOW_STRICT = True
+    MARSHMALLOW_DATEFORMAT = 'rfc'
+
     @staticmethod
     def init_app(app):
         pass
@@ -17,8 +22,6 @@ class DevConfig(BaseConfig):
 
 class TestConfig(BaseConfig):
     TESTING = True
-    MARSHMALLOW_STRICT = True
-    MARSHMALLOW_DATEFORMAT = 'rfc'
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URI') or \
         'sqlite:///{}'.format(os.path.join(basedir, 'test-sqlite.db'))
 
