@@ -65,6 +65,7 @@ class BaseSchemaTestCase(SchemaTestCase):
 
 class AlbumSchemaTestCase(SchemaTestCase):
 
+    @unittest.skip('')
     def test_expected_output(self):
         album = models.Album.query.get(1)
         data = schemas.TracklistSchema(album).data
@@ -93,6 +94,7 @@ class AlbumSchemaTestCase(SchemaTestCase):
 
 class TrackSchemaTestCase(SchemaTestCase):
     
+    @unittest.skip('')
     def test_expected_output(self):
         track = models.Track.query.get(1)
         data = schemas.TrackSchema(track).data

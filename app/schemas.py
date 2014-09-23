@@ -41,6 +41,18 @@ class ArtistSchema(BaseSchema):
         'collection' : ma.URL('artists', _external=True)
         })
 
+    top_tags = ma.Method('counted_tags')
+
+    def counted_tags(self, obj):
+        result = []
+
+        for tag, count in obj.top_tags:
+            data = TagSchema(tag).data
+            data['count'] = count
+            result.append(data)
+
+        return result
+
 class MemberSchema(BaseSchema):
     bio = ma.String()
     playlists = ma.Nested('TracklistSchema', only=common+('links',), many=True)
@@ -65,3 +77,6 @@ class TrackSchema(BaseSchema):
         'collection' : ma.URL('tracks', _external=True)
 
         })
+
+class TagSchema(BaseSchema):
+    pass

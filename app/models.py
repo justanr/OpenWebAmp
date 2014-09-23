@@ -93,10 +93,13 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
     def get_tags(self):
         q = self._tags
         q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
-        q = q.add_columns(
-            db.func.count(MemberTaggedArtist.member_id).label('count'),
+        # MemberTaggedArtist model is actually just a pivot table
+        # and just adds noise to the returned data
+        # with_entities replaces the selected entities with different ones
+        q = q.with_entities(
+            Tag,
+            db.func.count(MemberTaggedArtist.member_id).label('count')
             )
-        q = q.add_entity(Tag)
         q = q.group_by(MemberTaggedArtist.tag_id)
         q = q.order_by(db.desc('count'))
         q = q.order_by(Tag.name)

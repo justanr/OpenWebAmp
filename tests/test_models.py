@@ -1,6 +1,8 @@
 import unittest
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
+
 from app import configs, create_app, db, models, Permissions
 
 class ModelTestCase(unittest.TestCase):
@@ -90,8 +92,13 @@ class MemberTestCase(ModelTestCase):
 
 class ArtistTestCase(ModelTestCase):
 
+    def setUp(self):
+        self.member = models.Member.find_or_create(db.session, **members[0])
+        self.tag = models.Tag.find_or_create(db.session, name='Rock')
+        db.session.commit()
+
     def tearDown(self):
-        db.session.remove()
+        pass
 
     def test_add_album(self):
         thefoobars = models.Artist(name='The Foo Bars')
@@ -112,6 +119,17 @@ class ArtistTestCase(ModelTestCase):
             )
 
         self.assertTrue(thefoobars.tracks.count() == 1)
+
+    def test_top_tags(self):
+        thefoobars = models.Artist(name='The Foo Bars')
+        thefoobars._tags.append(
+            models.MemberTaggedArtist(
+                tag=self.tag,
+                member=self.member
+                )
+            )
+        db.session.commit()
+        self.assertIs(thefoobars.top_tags[0][0], self.tag)
 
 class TracklistTestCase(ModelTestCase):
     
@@ -264,3 +282,37 @@ class TrackTestCase(ModelTestCase):
         self.assertTrue(
             all(tl in baz.tracklists for tl in [self.foo_bar_d, self.apl])
             )
+
+class TagTestCase(ModelTestCase):
+    
+    def test_unique(self):    
+        rock = models.Tag.find_or_create(db.session, name='Rock')
+        other = models.Tag.find_or_create(db.session, name='Rock')
+        self.assertIs(rock, other)
+
+class MemberTaggedArtistTestCase(ModelTestCase):
+    
+    def test_unique_constraint(self):
+        artist = models.Artist(name='The Foo Bars')
+        member = models.Member(**members[0])
+        tag = models.Tag(name='Rock')
+
+        mta_1 = models.MemberTaggedArtist(
+            artist=artist,
+            tag=tag,
+            member=member
+            )
+
+        mta_2 = models.MemberTaggedArtist(
+            artist=artist,
+            tag=tag,
+            member=member
+            )
+        
+        db.session.add_all([mta_1, mta_2])
+
+        with self.assertRaises(IntegrityError) as e:
+            db.session.commit()
+
+        db.session.rollback()
+        self.assertIsInstance(e.exception, IntegrityError)
