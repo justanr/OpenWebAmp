@@ -11,6 +11,7 @@ from werkzeug import generate_password_hash, check_password_hash
 
 from .utils.models import ReprMixin, UniqueMixin
 from .utils.perms import Permissions
+from .util.slugger import slugger
 
 db = SQLAlchemy()
 
@@ -19,17 +20,7 @@ class Member(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    playlists = db.relationship(
-        'Playlist', 
-        backref='owner', 
-        order_by='Playlist.name'
-        )
-    name = db.Column(
-        db.Unicode, 
-        index=True, 
-        unique=True, 
-        nullable=False
-        )
+    slug = db.Column(db.Unicode(32), index=True, unique=True)
     bio = db.Column(
         db.UnicodeText, 
         default='Nickelback is my favorite band.'
@@ -40,6 +31,12 @@ class Member(db.Model, ReprMixin, UniqueMixin):
         index=True, 
         nullable=False
         )
+    name = db.Column(
+        db.Unicode(32),
+        index=True,
+        unique=True,
+        nullable=False
+        )
     permissions = db.Column(
         db.Integer,
         default=(
@@ -47,6 +44,11 @@ class Member(db.Model, ReprMixin, UniqueMixin):
             Permissions.TAG
             ),
         index=True
+        )
+    playlists = db.relationship(
+        'Playlist',
+        backref='owner',
+        order_by='Playlist.name'
         )
 
     def __init__(self, name, email, password):
@@ -77,18 +79,18 @@ class Member(db.Model, ReprMixin, UniqueMixin):
     def unique_func(cls, query, email, **kwargs):
         return query.filter(cls.email == email)
 
-
 class Artist(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'artists'
     
     id = db.Column(db.Integer, primary_key=True)
+    albums = db.relationship('Album', backref='owner', order_by='Album.name')
+    slug = db.Column(db.Unicode(128), unique=True, index=True)
     name = db.Column(
-        db.Unicode, 
+        db.Unicode(128),
         unique=True,
         index=True,
         nullable=False
         )
-    albums = db.relationship('Album', backref='owner', order_by='Album.name')
 
     def get_tags(self):
         q = self._tags
@@ -124,10 +126,11 @@ class Track(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'tracks'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.UnicodeText, index=True)
+    name = db.Column(db.Unicode(128), index=True)
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
     length = db.Column(db.Integer)
     location = db.Column(db.Unicode, unique=True)
+    slug = db.Column(db.Unicode(128), index=True, unique=True)
     _trackpositions = db.relationship('TrackPosition', backref='track')
     # association_proxy allows easy access to an attribute on a
     # foreign relationship. In this case, the tracklist attribute
@@ -202,6 +205,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(128), index=True, nullable=False)
+    slug = db.Column(db.Unicode(128), index=True, unique=True)
     type = db.Column(db.String(32))
     _trackpositions = db.relationship(
         'TrackPosition',
@@ -277,6 +281,7 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(64), unique=True)
+    slug = db.Column(db.Unicode(64), unique=True, index=True)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
