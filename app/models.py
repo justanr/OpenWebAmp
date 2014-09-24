@@ -16,7 +16,7 @@ db = SQLAlchemy()
 class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
-    id = db.Column( db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
     playlists = db.relationship(
         'Playlist', 
@@ -82,12 +82,12 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(
-        db.Unicode, 
-        unique=True,
+        db.Unicode,
         index=True,
         nullable=False
         )
     albums = db.relationship('Album', backref='owner', order_by='Album.name')
+    mbid = db.Column(db.String(36), unique=True, index=True)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -118,7 +118,7 @@ class Track(db.Model, ReprMixin, UniqueMixin):
             )
         )
     stream = db.Column(
-        db.String, 
+        db.String(36), 
         unique=True,
         default=lambda: str(uuid4())
         )
@@ -169,6 +169,12 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # inital ordering.
         order_by='TrackPosition.position',
         collection_class=ordering_list('position')
+        )
+    stream = db.Column(
+        db.String(36),
+        unique=True,
+        index=True,
+        default=lambda: str(uuid4())
         )
     tracks = association_proxy(
         '_trackpositions',
