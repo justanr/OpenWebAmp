@@ -4,7 +4,7 @@
     ~~~~~~~~~~~~~~~~~~~
 
     :copyright: (c) 2014 Alec Nikolas Reiter
-    :license: MIT, see LICENSE for more details
+    :license: GNU GPLv3, see LICENSE for more details
 
 '''
 
