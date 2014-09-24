@@ -1,62 +1,64 @@
-FlaskAmp
-========
+OpenWebAmp
+==========
 
 It really whips the Python's Ass.
 
-FlaskAmp is attempt to build a web based music player.
+OpenWebAmp (OWA) is an attempt to build a sharable web music player based on API first principles.
 
-Use
----
+* API First: By designing OWA's API first, rather than as a traditional website, makes extending it's services simple.
+    * RESTful: OWA's API is designed to be RESTful, storing and transfering only data between client and server.
+    * Discoverable: Each subresource contained in a response also communicates needed information about location.
+    * JSON: Because JSON is easy to work with.
+* Sharable: Build and share playlists among other members and tag artists with genres.
 
-Currently, the only way to add tracks is through the Flask-Script manager script.
+###Features
 
-    python manager.py add -d /path/to/audio/directory/
+* Stream music files easily through the web
+* Build and share playlists of favorite tracks
+* Tag artists with every genre imaginable
 
-That will search the directory for applicable files, open them, parse them and stuff them into the database.
+###Use
+Currently, OpenWebAmp is just a service initiated from the command line.
 
-After that, you can use `/album/`, `/artist/`, and `/track/` as well their `<id>` option to view the data.
+    python manager.py add -d /path/to/music/directory
 
-You can also currently stream audio by navigating to `/stream/<stream_id>/`. For now, the streaming is handled by Flask and whichever WSGI server is handling it.
+OpenWebAmp will crawl (recursively) the target directory and process any compatible music file it discovers. Processing consists simply of pulling relevant metadata information out of the file and storing it in a RDBMS.
 
-Obviously, this will need to be changed since an actual web server will handle static files better.
+After that, you can view:
 
-Why?
-----
-I'm sure I'll be asked this time and time again. There are better options for putting your music library "in the cloud."
+* `host/artist/` for artist listing
+* `host/album/` for album listing
+* `host/track/` for track listing.
 
-The real answer is because I can. I've built small APIs before but nothing I've cared to share.
+Additionally, each of these endpoints supports an `/<int:id>/` portion that will allow you to view an individual resource.
 
-The other reason being is that there is a bunch of stuff that goes with a project like this:
+###Streaming
 
-* Properly laying out modules
-* Audio data processing
-* Going beyond user authorizations to also handling and securing tokens
+Each track supports streaming. `host/stream/<str:uuid>/` handles this.
 
-Features
---------
-Currently, FlaskAmp is just a barebones API. But there's more in the works.
+However, currently streaming is handled by Flask sending a file resource instead of passing this off to a HTTP server. This will be removed when development moves beyond initial feature implementation.
 
-* FlaskAmp was always concieved to be an API based design. There is not native UI to it.
-* Streaming -- eventually: it's not really a web based player if there's no streaming.
-* Member playlists -- eventually: Why play just single tracks or albums when you can build your own tracklist?
-* Tags -- eventually: Allow members to tag artists with their own tags.
+###Why?
+Undoubtedly, this question will be asked numerous times. The only real answer is: Why not? I've built small APIs for practice before but nothing I've been excited about sharing, but this project is something I do want to share.
 
+There are better options for putting music in the cloud, I'll admit that. However, reinventing the wheel leads to understanding. What do I hope to learn?
 
-Issues
-------
+* Structuring projects: Especially avoiding things like circular imports and dependencies.
+* Developing a deeper understanding of Python, Flask and SQLAlchemy.
+* Learning proper RESTful API techniques:
+    * Building a stateless member system
+    * Finding the right balance of information to communicate with each request
+    * Being discoverable and self-documenting
+* Writing documentation covering most aspects of the application
+* Deploying to various server stacks
+* Utilizing git in day-to-day programming
+* Testing: when, what, where and how often to test
 
-* There are no tests! AHHH! But seriously, I need to write some.
-* The code's messy and there's a couple of hacks in there (looking at you, TinyTag unicode).
-* Streaming, members and playlists aren't implemented.
-* Flask-Script is used and Click is installed as well. I'd like to convert to Click instead.
+###Requirements
+OpenWebAmp was developed using Python 3.4; however, I believe it should be backwards compatible to 3.0 and with some tinkering to 2.7/6.
 
+I am planning to initially deploy OWA to Nginx and use X-Accel headers to serve media.
 
-Requirements
-------------
-FlaskAmp itself was developed using Python 3.4. Currently, there are no immediate plans to test it with other versions. However, there is, no reason this won't happen (I'm more concerned with getting the thing working).
+The `awesome_slugify` package depends on `regex` which requires the Python development package to be installed.
 
-I'm also planning on implementing Streaming with X-Accel headers. To my knowledge, this'll limit FlaskAmp to Nginx.
-
-Beyond that, there is the `requirements` file which lists everything else needed for this build.
-
-
+Other than that, everything else is listed in the REQUIREMENTS file.
