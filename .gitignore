@@ -21,6 +21,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+SHELL_ENV
 
 # Installer logs
 pip-log.txt
@@ -51,4 +52,15 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+
+
+# Alembic migrations details
+migrations/alembic.ini
+migrations/README
+migrations/env.py
+migrations/script.py.mako
+
+# git
+.git
+.gitignore
 

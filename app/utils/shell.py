@@ -4,6 +4,8 @@ from time import time
 
 from mutagenx import File
 
+from sqlalchemy.exc import IntegrityError
+
 from .. import models
 
 valid_types=('m4a', 'flac', 'mp3', 'ogg', 'oga')
@@ -14,11 +16,13 @@ def find(basedir, valid_types=valid_types):
     parse and yield them one at a time.'''
     basedir = os.path.abspath(basedir)
     for current, dirs, files in os.walk(basedir):
-        if not files:
-            continue
-        for file in sorted(files):
-            if file.endswith(valid_types):
-                yield os.path.join(os.path.abspath(current), file)
+        files = sorted(files)
+        files = filter(lambda f: f.endswith(valid_types), files)
+        files = [os.path.join(current, f) for f in files]
+
+        if files:
+            yield files
+
 
 def adaptor(track):
     return dict(
@@ -51,18 +55,26 @@ def adapt_track(track, adaptor=adaptor):
 def store_directory(basedir, valid_types=valid_types, adaptor=adaptor):
     start = time()
     i = 0
-    for file in find(basedir, valid_types):
-        file = File(file, easy=True)
+    for group in find(basedir, valid_types):
+        for file in group:
+            file = File(file, easy=True)
+            try:
+                artist, album, track = adapt_track(file)
+            except KeyError:
+                print('Error processing: {}'.format(file))
+            else:
+                print(
+                    " * Processed: {0.name} - {1.name} - {2.name}"
+                    "".format(artist, album, track)
+                    )
+                i += 1
         
         try:
-            artist, album, track = adapt_track(file)
-            print(
-                " * Storing: {0.name} - {1.name} - {2.name}"
-                "".format(artist, album, track))
-            i += 1
             models.db.session.commit()
-        except KeyError:
-            pass
-    
+        except IntegrityError as e:
+            models.db.session.rollback()
+            print('Error encountered: {}'.format(e.msg)) 
+        else:
+            print(' * Storing: {0.name} - {1.name}'.format(artist, album))
     end = int(time() - start)
     print(" * Stored {} files. \n * Took {} seconds".format(i, end))

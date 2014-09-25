@@ -24,7 +24,7 @@ from app import (
 from app.utils import shell
 
 
-config = os.environ.get('FLASK_AMP_ENV', 'default')
+config = os.environ.get('OWA_ENV', 'default')
 
 if config not in configs.keys():
     config = 'default'

@@ -87,7 +87,6 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
         nullable=False
         )
     albums = db.relationship('Album', backref='owner', order_by='Album.name')
-    mbid = db.Column(db.String(36), unique=True, index=True)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -169,12 +168,6 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # inital ordering.
         order_by='TrackPosition.position',
         collection_class=ordering_list('position')
-        )
-    stream = db.Column(
-        db.String(36),
-        unique=True,
-        index=True,
-        default=lambda: str(uuid4())
         )
     tracks = association_proxy(
         '_trackpositions',
