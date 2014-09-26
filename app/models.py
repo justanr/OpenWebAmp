@@ -314,7 +314,7 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
         return q
 
     @property
-    def top_artistss(self):
+    def top_artists(self):
         limit = current_app.config['TOP_TAG_LIMIT']
         tags = self.get_artists().paginate(1, limit, False).items
         return tags

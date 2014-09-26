@@ -47,7 +47,7 @@ class ArtistSchema(BaseSchema):
         result = []
 
         for tag, count in obj.top_tags:
-            data = TagSchema(tag).data
+            data = TagSchema(tag, exclude=('top_artists',)).data
             data['count'] = count
             result.append(data)
 
@@ -60,6 +60,20 @@ class MemberSchema(BaseSchema):
         'self' : ma.URL('member', id='<id>', _external=True),
         'collection' : ma.URL('members', _external=True)
         })
+
+    top_tags = ma.Method('counted_tags')
+
+    def counted_tags(self, obj):
+        result = []
+
+        for tag, count in obj.top_tags:
+            data = TagSchema(tag, exclude=('top_artists',)).data
+            data['count'] = count
+            result.append(data)
+
+        return result
+
+
 
 class TrackSchema(BaseSchema):
     length = Length()
@@ -79,4 +93,18 @@ class TrackSchema(BaseSchema):
         })
 
 class TagSchema(BaseSchema):
-    pass
+    links = ma.Hyperlinks({
+        'self' : ma.URL('tag', id='<id>', _external=True),
+        'collection' : ma.URL('tags', _external=True)
+        })
+    top_artists = ma.Method('counted_artists')
+
+    def counted_artists(self, obj):
+        result = []
+
+        for art, count in obj.top_artists:
+            data = ArtistSchema(art, only=common+('links',)).data
+            data['count'] = count
+            result.append(data)
+
+        return result
