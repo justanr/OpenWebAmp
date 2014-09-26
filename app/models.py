@@ -100,7 +100,7 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
             Tag,
             db.func.count(MemberTaggedArtist.member_id).label('count')
             )
-        q = q.group_by(MemberTaggedArtist.tag_id)
+        q = q.group_by(Tag.id)
         q = q.order_by(db.desc('count'))
         q = q.order_by(Tag.name)
 
