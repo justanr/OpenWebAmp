@@ -62,6 +62,28 @@ class Member(db.Model, ReprMixin, UniqueMixin):
     def password(self, value):
         self.password_hash = generate_password_hash(value)
 
+    @property
+    def top_tags(self):
+        tags = self.get_tags()
+        limit = current_app.config['TOP_TAG_LIMIT']
+
+        page = tags.paginate(1, limit, False)
+
+        return page.items
+
+    def get_tags(self):
+        q = self._tags
+        q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
+        q = q.with_entities(
+            Tag,
+            db.func.count(MemberTaggedArtist.artist_id).label('count')
+            )
+        q = q.group_by(Tag.id)
+        q = q.order_by(db.desc('count'))
+        q = q.order_by(Tag.name)
+
+        return q
+
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
