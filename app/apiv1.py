@@ -25,7 +25,7 @@ class SingleMember(Resource):
 class SingleTracklist(Resource):
     def get(self, id):
         tracklist = models.Tracklist.query.get_or_404(id)
-        return {'tracklist' : schemas.TracklistSchema(playlist).data}
+        return {'tracklist' : schemas.TracklistSchema(tracklist).data}
 
 class ListArtist(Resource):
     def get(self):

@@ -232,8 +232,8 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # on the proxied Tracks. However, it must also be fed a correct
         # inital ordering.
         order_by='TrackPosition.position',
-        collection_class=ordering_list('position')
-        )
+        collection_class=ordering_list('position'),
+       )
     tracks = association_proxy(
         '_trackpositions',
         'track',
