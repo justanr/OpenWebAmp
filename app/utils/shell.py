@@ -48,7 +48,9 @@ def adapt_track(track, adaptor=adaptor):
         )
     info['artist'] = artist
     track = models.Track.find_or_create(models.db.session, **info)
-    album.tracks.append(track)
+
+    if track not in album.tracks:
+        album.tracks.append(track)
 
     return artist, album, track
 
