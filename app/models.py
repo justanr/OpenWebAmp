@@ -300,6 +300,25 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(64), unique=True)
 
+    def get_artists(self):
+        q = self._artists
+        q = q.join(Artist, Artist.id == MemberTaggedArtist.artist_id)
+        q = q.with_entities(
+            Artist,
+            db.func.count(MemberTaggedArtist.member_id).label('count')
+            )
+        q = q.group_by(Artist.id)
+        q = q.order_by(db.desc('count'))
+        q = q.order_by(Artist.name)
+
+        return q
+
+    @property
+    def top_artistss(self):
+        limit = current_app.config['TOP_TAG_LIMIT']
+        tags = self.get_artists().paginate(1, limit, False).items
+        return tags
+
     @classmethod
     def unique_hash(cls, name, **kwargs):
         return name
