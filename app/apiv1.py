@@ -20,6 +20,7 @@ class SingleArtist(Resource):
         return {'artist':schemas.ArtistSchema(q).data}
 
 
+
 class SingleTrack(Resource):
     def get(self, slug):
         slug = slug.lower()
@@ -31,6 +32,7 @@ class SingleTrack(Resource):
             abort(404)
 
         return {'track':schemas.TrackSchema(q).data}
+
 
 
 class SingleMember(Resource):
@@ -45,6 +47,7 @@ class SingleMember(Resource):
         return {'member' : schemas.MemberSchema(q).data}
 
 
+
 class SingleTracklist(Resource):
     def get(self, slug):
         slug = slug.lower()
@@ -56,6 +59,18 @@ class SingleTracklist(Resource):
             abort(404)
 
         return {'tracklist' : schemas.TracklistSchema(q).data}
+
+class SingleTag(Resource):
+    def get(self, slug):
+        slug = slug.lower()
+        q = models.Tag.query
+        q = q.filter(models.Tag.slug==slug)
+        q = q.first()
+
+        if not q:
+            abort(404)
+
+        return {'tag' : schemas.TagSchema(q).data}
 
 class ListArtist(Resource):
     def get(self):
@@ -139,11 +154,36 @@ class ListTrack(Resource):
 
         return {'tracks':serializer.data}
 
+class ListTag(Resource):
+    def get(self):
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=10, type=int)
+
+        q = models.Tag.query.order_by(models.Tag.name)
+        page = q.paginate(page, limit, False)
+
+        serializer = schemas.TagSchema(
+            page.items, 
+            only=(
+                'id', 
+                'name', 
+                'links'
+                ), 
+            many=True
+            )
+
+        return {'tags' : serializer.data}
+
+
+api.add_resource(SingleTag, '/tag/<slug>/', endpoint='tag')
+api.add_resource(ListTag, '/tag/', endpoint='tags')
+
 api.add_resource(SingleArtist, '/artist/<slug>/', endpoint='artist')
 api.add_resource(ListArtist, '/artist/', endpoint='artists')
 
 api.add_resource(SingleTrack, '/track/<slug>/', endpoint='track')
 api.add_resource(ListTrack, '/track/', endpoint='tracks')
+
 
 api.add_resource(SingleMember, '/member/<slug>/', endpoint='member')
 api.add_resource(ListMember, '/member/', endpoint='members')

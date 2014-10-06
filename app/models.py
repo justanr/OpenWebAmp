@@ -15,6 +15,27 @@ from .utils.slugger import slugger
 
 db = SQLAlchemy()
 
+def _tags(query, count):
+    '''Reusable pattern to return (<Tag>Object, <int>Count) pairs for
+    members and artists.
+
+    query: A SQLA query that represents the join between the caller and 
+        the pivot table
+    count: The field in the Pivot table that should be fed to `COUNT`.
+    page/limit: offset and limit parameters for FSQLA's paginate object.
+    '''
+
+    q = query.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
+    q = q.with_entities(
+        Tag,
+        db.func.count(count).label('count')
+        )
+    q = q.group_by(Tag.id)
+    q = q.order_by(db.desc('count'))
+    q = q.order_by(Tag.name)
+
+    return q
+
 class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
@@ -65,6 +86,10 @@ class Member(db.Model, ReprMixin, UniqueMixin):
     def password(self, value):
         self.password_hash = generate_password_hash(value)
 
+    @property
+    def tags(self):
+        return _tags(query=self._tags, count=MemberTaggedArtist.artist_id).all()
+
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -93,9 +118,15 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
         nullable=False
         )
 
+
     def __init__(self, name):
         self.name = name
         self.slug = slugger(name)
+
+    @property
+    def tags(self):
+        return _tags(query=self._tags, count=MemberTaggedArtist.member_id).all()
+
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -113,7 +144,7 @@ class Track(db.Model, ReprMixin, UniqueMixin):
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
     length = db.Column(db.Integer)
     location = db.Column(db.Unicode, unique=True)
-    slug = db.Column(db.Unicode(128), index=True, unique=True)
+    slug = db.Column(db.Unicode(128), index=True)
     _trackpositions = db.relationship('TrackPosition', backref='track')
     # association_proxy allows easy access to an attribute on a
     # foreign relationship. In this case, the tracklist attribute
@@ -195,7 +226,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(128), index=True, nullable=False)
-    slug = db.Column(db.Unicode(128), index=True, unique=True)
+    slug = db.Column(db.Unicode(128), index=True, nullable=False)
     type = db.Column(db.String(32))
     _trackpositions = db.relationship(
         'TrackPosition',
@@ -204,8 +235,8 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # on the proxied Tracks. However, it must also be fed a correct
         # inital ordering.
         order_by='TrackPosition.position',
-        collection_class=ordering_list('position')
-        )
+        collection_class=ordering_list('position'),
+       )
     tracks = association_proxy(
         '_trackpositions',
         'track',
@@ -285,3 +316,95 @@ class Playlist(Tracklist):
         'polymorphic_identity' : 'playlist',
         'inherit_condition' : (id == Tracklist.id)
         }
+
+
+class Tag(db.Model, ReprMixin, UniqueMixin):
+    __tablename__ = 'tags'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode(64), unique=True)
+    slug = db.Column(db.Unicode(64), unique=True)
+
+    def __init__(self, name):
+        self.name = name
+        self.slug = slugger(name)
+
+
+    @property
+    def total(self):
+        '''Returns the total number of times the tag has been used
+        '''
+        return self._artists.count()
+
+    @property
+    def artists(self):
+        q = self._artists
+        q = q.join(Artist, Artist.id == MemberTaggedArtist.artist_id)
+        q = q.with_entities(
+            Artist,
+            db.func.count(MemberTaggedArtist.member_id).label('count')
+            )
+        q = q.group_by(Artist.id)
+        q = q.order_by(db.desc('count'))
+        q = q.order_by(Artist.name)
+        return q.all()
+
+    @classmethod
+    def unique_hash(cls, name, **kwargs):
+        return name
+
+    @classmethod
+    def unique_func(cls, query, name, **kwargs):
+        return query.filter(cls.name == name)
+
+class MemberTaggedArtist(db.Model, ReprMixin):
+    __tablename__ = 'membertaggedartists'
+    __repr_fields__ = ['id', 'tag', 'member', 'artist']
+
+    id = db.Column(db.Integer, primary_key=True)
+    member_id = db.Column(
+        db.Integer,
+        db.ForeignKey('members.id'),
+        )
+    artist_id = db.Column(
+        db.Integer,
+        db.ForeignKey('artists.id'),
+        )
+    tag_id = db.Column(
+        db.Integer,
+        db.ForeignKey('tags.id'),
+        )
+
+    member = db.relationship(
+        'Member',
+        backref=db.backref(
+            '_tags',
+            lazy='dynamic'
+            )
+        )
+    artist = db.relationship(
+        'Artist',
+        backref=db.backref(
+            '_tags',
+            lazy='dynamic'
+            )
+        )
+    tag = db.relationship(
+        'Tag',
+        backref=db.backref(
+            '_artists',
+            lazy='dynamic'
+            )
+        )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            # Ensures that each member can only 
+            # tag an artist once with each tag.
+            'member_id',
+            'artist_id',
+            'tag_id',
+            name='uq_mta'
+            ),
+        )
+
