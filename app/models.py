@@ -11,7 +11,7 @@ from werkzeug import generate_password_hash, check_password_hash
 
 from .utils.models import ReprMixin, UniqueMixin
 from .utils.perms import Permissions
-from .util.slugger import slugger
+from .utils.slugger import slugger
 
 db = SQLAlchemy()
 
@@ -55,6 +55,7 @@ class Member(db.Model, ReprMixin, UniqueMixin):
         self.name = name
         self.email = email
         self.password = password
+        self.slug = slugger(name)
 
     @property
     def password(self):
@@ -92,27 +93,9 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
         nullable=False
         )
 
-    def get_tags(self):
-        q = self._tags
-        q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
-        # MemberTaggedArtist model is actually just a pivot table
-        # and just adds noise to the returned data
-        # with_entities replaces the selected entities with different ones
-        q = q.with_entities(
-            Tag,
-            db.func.count(MemberTaggedArtist.member_id).label('count')
-            )
-        q = q.group_by(MemberTaggedArtist.tag_id)
-        q = q.order_by(db.desc('count'))
-        q = q.order_by(Tag.name)
-
-        return q
-
-    @property
-    def top_tags(self):
-        limit = current_app.config['TOP_TAG_LIMIT']
-        tags = self.get_tags().paginate(1, limit, False).items
-        return tags
+    def __init__(self, name):
+        self.name = name
+        self.slug = slugger(name)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -148,6 +131,13 @@ class Track(db.Model, ReprMixin, UniqueMixin):
         unique=True,
         default=lambda: str(uuid4())
         )
+
+    def __init__(self, name, artist, length, location):
+        self.name = name
+        self.artist = artist
+        self.length = length
+        self.location = location
+        self.slug = slugger(name)
 
     @classmethod
     def unique_hash(cls, name, artist, location, **kwargs):
@@ -225,6 +215,13 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         creator=lambda t: TrackPosition(track=t)
         )
 
+    def __init__(self, name, tracks=None):
+        self.name = name
+        self.slug = slugger(name)
+
+        if tracks:
+            self.tracks.extend(tracks)
+
     @property
     def length(self):
         '''Sums the length of all track objects associated with this tracklist.
@@ -255,6 +252,10 @@ class Album(Tracklist):
         primary_key=True
         )
 
+    def __init__(self, owner, **kwargs):
+        self.owner = owner
+        super().__init__(**kwargs)
+
     __mapper_args__ = {
         'polymorphic_identity' : 'album',
         'inherit_condition' : (id == Tracklist.id)
@@ -270,74 +271,11 @@ class Playlist(Tracklist):
         primary_key=True
         )
 
+    def __init__(self, owner, **kwargs):
+        self.owner = owner
+        super().__init__(**kwargs)
+
     __mapper_args__ = {
         'polymorphic_identity' : 'playlist',
         'inherit_condition' : (id == Tracklist.id)
         }
-
-
-class Tag(db.Model, ReprMixin, UniqueMixin):
-    __tablename__ = 'tags'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Unicode(64), unique=True)
-    slug = db.Column(db.Unicode(64), unique=True, index=True)
-
-    @classmethod
-    def unique_hash(cls, name, **kwargs):
-        return name
-
-    @classmethod
-    def unique_func(cls, query, name, **kwargs):
-        return query.filter(cls.name == name)
-
-class MemberTaggedArtist(db.Model, ReprMixin):
-    __tablename__ = 'membertaggedartists'
-    __repr_fields__ = ['id', 'tag', 'member', 'artist']
-
-    id = db.Column(db.Integer, primary_key=True)
-    member_id = db.Column(
-        db.Integer,
-        db.ForeignKey('members.id'),
-        )
-    artist_id = db.Column(
-        db.Integer,
-        db.ForeignKey('artists.id'),
-        )
-    tag_id = db.Column(
-        db.Integer,
-        db.ForeignKey('tags.id'),
-        )
-
-    member = db.relationship(
-        'Member',
-        backref=db.backref(
-            '_tags',
-            lazy='dynamic'
-            )
-        )
-    artist = db.relationship(
-        'Artist',
-        backref=db.backref(
-            '_tags',
-            lazy='dynamic'
-            )
-        )
-    tag = db.relationship(
-        'Tag',
-        backref=db.backref(
-            '_artists',
-            lazy='dynamic'
-            )
-        )
-
-    __table_args__ = (
-        db.UniqueConstraint(
-            # Ensures that each member can only 
-            # tag an artist once with each tag.
-            'member_id',
-            'artist_id',
-            'tag_id',
-            name='uq_mta'
-            ),
-        )
