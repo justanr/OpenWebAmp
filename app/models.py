@@ -1,6 +1,7 @@
 from uuid import uuid4
 from datetime import datetime
 
+from flask import current_app
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -10,6 +11,7 @@ from werkzeug import generate_password_hash, check_password_hash
 
 from .utils.models import ReprMixin, UniqueMixin
 from .utils.perms import Permissions
+from .utils.slugger import slugger
 
 db = SQLAlchemy()
 
@@ -18,17 +20,7 @@ class Member(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    playlists = db.relationship(
-        'Playlist', 
-        backref='owner', 
-        order_by='Playlist.name'
-        )
-    name = db.Column(
-        db.Unicode, 
-        index=True, 
-        unique=True, 
-        nullable=False
-        )
+    slug = db.Column(db.Unicode(32), index=True, unique=True)
     bio = db.Column(
         db.UnicodeText, 
         default='Nickelback is my favorite band.'
@@ -39,6 +31,12 @@ class Member(db.Model, ReprMixin, UniqueMixin):
         index=True, 
         nullable=False
         )
+    name = db.Column(
+        db.Unicode(32),
+        index=True,
+        unique=True,
+        nullable=False
+        )
     permissions = db.Column(
         db.Integer,
         default=(
@@ -47,11 +45,17 @@ class Member(db.Model, ReprMixin, UniqueMixin):
             ),
         index=True
         )
+    playlists = db.relationship(
+        'Playlist',
+        backref='owner',
+        order_by='Playlist.name'
+        )
 
     def __init__(self, name, email, password):
         self.name = name
         self.email = email
         self.password = password
+        self.slug = slugger(name)
 
     @property
     def password(self):
@@ -69,24 +73,29 @@ class Member(db.Model, ReprMixin, UniqueMixin):
             (self.permissions & permission) == permission
 
     @classmethod
-    def unique_hash(cls, name, email, **kwargs):
-        return name, email
+    def unique_hash(cls, email, **kwargs):
+        return email
 
     @classmethod
-    def unique_func(cls, query, name, email, **kwargs):
-        return query.filter(cls.name == name, cls.email == email)
-
+    def unique_func(cls, query, email, **kwargs):
+        return query.filter(cls.email == email)
 
 class Artist(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'artists'
     
     id = db.Column(db.Integer, primary_key=True)
+    albums = db.relationship('Album', backref='owner', order_by='Album.name')
+    slug = db.Column(db.Unicode(128), unique=True, index=True)
     name = db.Column(
-        db.Unicode,
+        db.Unicode(128),
+        unique=True,
         index=True,
         nullable=False
         )
-    albums = db.relationship('Album', backref='owner', order_by='Album.name')
+
+    def __init__(self, name):
+        self.name = name
+        self.slug = slugger(name)
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -100,10 +109,11 @@ class Track(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'tracks'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.UnicodeText, index=True)
+    name = db.Column(db.Unicode(128), index=True)
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
     length = db.Column(db.Integer)
     location = db.Column(db.Unicode, unique=True)
+    slug = db.Column(db.Unicode(128), index=True, unique=True)
     _trackpositions = db.relationship('TrackPosition', backref='track')
     # association_proxy allows easy access to an attribute on a
     # foreign relationship. In this case, the tracklist attribute
@@ -122,12 +132,19 @@ class Track(db.Model, ReprMixin, UniqueMixin):
         default=lambda: str(uuid4())
         )
 
+    def __init__(self, name, artist, length, location):
+        self.name = name
+        self.artist = artist
+        self.length = length
+        self.location = location
+        self.slug = slugger(name)
+
     @classmethod
-    def unique_hash(cls, name, artist, location,  **kwargs):
+    def unique_hash(cls, name, artist, location, **kwargs):
         return name, artist, location
 
     @classmethod
-    def unique_func(cls, query, name, artist, location,  **kwargs):
+    def unique_func(cls, query, name, artist, location, **kwargs):
         return query.filter(
             cls.name == name, 
             cls.artist_id == artist.id,
@@ -152,6 +169,25 @@ class TrackPosition(db.Model, ReprMixin):
         db.ForeignKey('tracklists.id'),
         index=True
         )
+    
+    __table_args__ = (
+        db.UniqueConstraint(
+            # Ensure each track can only appear
+            # in each tracklist position once
+            # the OrderingList extension *should*
+            # ensure this, but explicitly enforcing
+            # it in the database logic is good too
+            'position',
+            'track_id',
+            'tracklist_id',
+            name='uq_trackposition'
+            ),
+        db.CheckConstraint(
+            # Ensure that a track can't appear
+            # in an unacceptable position
+            'position > -1'
+            )
+        )
 
     
 class Tracklist(db.Model, ReprMixin, UniqueMixin):
@@ -159,6 +195,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(128), index=True, nullable=False)
+    slug = db.Column(db.Unicode(128), index=True, unique=True)
     type = db.Column(db.String(32))
     _trackpositions = db.relationship(
         'TrackPosition',
@@ -177,6 +214,13 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
         # attribute is automatically filled in by ordering_list
         creator=lambda t: TrackPosition(track=t)
         )
+
+    def __init__(self, name, tracks=None):
+        self.name = name
+        self.slug = slugger(name)
+
+        if tracks:
+            self.tracks.extend(tracks)
 
     @property
     def length(self):
@@ -214,6 +258,10 @@ class Album(Tracklist):
         primary_key=True
         )
 
+    def __init__(self, owner, **kwargs):
+        self.owner = owner
+        super().__init__(**kwargs)
+
     __mapper_args__ = {
         'polymorphic_identity' : 'album',
         'inherit_condition' : (id == Tracklist.id)
@@ -229,9 +277,11 @@ class Playlist(Tracklist):
         primary_key=True
         )
 
+    def __init__(self, owner, **kwargs):
+        self.owner = owner
+        super().__init__(**kwargs)
+
     __mapper_args__ = {
         'polymorphic_identity' : 'playlist',
         'inherit_condition' : (id == Tracklist.id)
         }
-
-

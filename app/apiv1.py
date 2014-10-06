@@ -1,4 +1,4 @@
-from flask import request
+from flask import abort, request
 
 from flask.ext.restful import Api, Resource
 
@@ -8,24 +8,54 @@ from . import schemas
 api = Api()
 
 class SingleArtist(Resource):
-    def get(self, id):
-        artist = models.Artist.query.get_or_404(id)
-        return {'artist':schemas.ArtistSchema(artist).data}
+    def get(self, slug):
+        slug = slug.lower()
+        q = models.Artist.query
+        q = q.filter(models.Artist.slug==slug)
+        q = q.first()
+
+        if not q:
+            abort(404)
+
+        return {'artist':schemas.ArtistSchema(q).data}
+
 
 class SingleTrack(Resource):
-    def get(self, id):
-        track = models.Track.query.get_or_404(id)
-        return {'track':schemas.TrackSchema(track).data}
+    def get(self, slug):
+        slug = slug.lower()
+        q = models.Track.query
+        q = q.filter(models.Track.slug==slug)
+        q = q.first()
+    
+        if not q:
+            abort(404)
+
+        return {'track':schemas.TrackSchema(q).data}
+
 
 class SingleMember(Resource):
-    def get(self, id):
-        member = models.Member.query.get_or_404(id)
-        return {'member' : schemas.MemberSchema(member).data}
+    def get(self, slug):
+        slug = slug.lower()
+        q = models.Member.query
+        q = q.filter(models.Member.slug==slug)
+        q = q.first()
+
+        if not q:
+            abort(404)
+        return {'member' : schemas.MemberSchema(q).data}
+
 
 class SingleTracklist(Resource):
-    def get(self, id):
-        tracklist = models.Tracklist.query.get_or_404(id)
-        return {'tracklist' : schemas.TracklistSchema(tracklist).data}
+    def get(self, slug):
+        slug = slug.lower()
+        q = models.Tracklist.query
+        q = q.filter(models.Tracklist.slug==slug)
+        q = q.first()
+
+        if not q:
+            abort(404)
+
+        return {'tracklist' : schemas.TracklistSchema(q).data}
 
 class ListArtist(Resource):
     def get(self):
@@ -34,18 +64,34 @@ class ListArtist(Resource):
 
         q = models.Artist.query.order_by(models.Artist.name)
         page = q.paginate(page, limit, False)
+        
+        serializer = schemas.ArtistSchema(
+            page.items,
+            many=True,
+            exclude=(
+                'albums',
+                'tags'
+                )
+            )
 
-        return {'artists':schemas.ArtistSchema(page.items, many=True).data}
+        return {'artists':serializer.data}
+
 
 class ListMember(Resource):
     def get(self):
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=10, type=int)
 
-        q = models.Artist.query.order_by(models.Member.name)
+        q = models.Member.query.order_by(models.Member.name)
         page = q.paginate(page, limit, False)
 
-        return {'members':schemas.MemberSchema(page.items, many=True).data}
+        serializer = schemas.MemberSchema(
+            page.items, 
+            many=True,
+            exclude=('playlists', 'tags')
+            )
+
+        return {'members' : serializer.data}
 
 
 class ListTracklist(Resource):
@@ -69,33 +115,38 @@ class ListTracklist(Resource):
 
         return {'tracklists' : serializer.data}
 
+
 class ListTrack(Resource):
     def get(self):
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=10, type=int)
 
-        q = models.Track.query.join(models.Artist,Album)
+        q = models.Track.query.join(models.Artist)
         q = q.filter(
-            models.Artist.id==models.Album.artist_id,
-            models.Album.id==models.Track.album_id
+            models.Artist.id==models.Album.owner_id
             )
         q = q.order_by(
-            models.Artist.name, 
-            models.Album.name, 
-            models.Track.position
+            models.Track.name,
+            models.Artist.name
             )
         page = q.paginate(page, limit, False)
-        
-        return {'tracks':schemas.TrackSchema(page.items, many=True).data}
+       
+        serializer = schemas.TrackSchema(
+            page.items, 
+            many=True,
+            only=('id', 'name', 'links', 'artist')
+            )
 
-api.add_resource(SingleArtist, '/artist/<id>/', endpoint='artist')
+        return {'tracks':serializer.data}
+
+api.add_resource(SingleArtist, '/artist/<slug>/', endpoint='artist')
 api.add_resource(ListArtist, '/artist/', endpoint='artists')
 
-api.add_resource(SingleTrack, '/track/<id>/', endpoint='track')
+api.add_resource(SingleTrack, '/track/<slug>/', endpoint='track')
 api.add_resource(ListTrack, '/track/', endpoint='tracks')
 
-api.add_resource(SingleMember, '/member/<id>/', endpoint='member')
-api.add_resource(ListArtist, '/member/', endpoint='members')
+api.add_resource(SingleMember, '/member/<slug>/', endpoint='member')
+api.add_resource(ListMember, '/member/', endpoint='members')
 
-api.add_resource(SingleTracklist, '/tracklist/<id>/', endpoint='tracklist')
+api.add_resource(SingleTracklist, '/tracklist/<slug>/', endpoint='tracklist')
 api.add_resource(ListTracklist, '/tracklist/', endpoint='tracklists')
