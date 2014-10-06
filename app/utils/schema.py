@@ -13,6 +13,8 @@
 
 """
 
+from functools import partial
+
 from marshmallow import fields
 from marshmallow.class_registry import get_class as get_schema
 from marshmallow.compat import basestring
@@ -114,3 +116,18 @@ class Length(fields.Raw):
 
     def format(self, value):
         return _convert_seconds_to_time(value)
+
+
+def counted(target=None, schema='BaseSchema', only=None, exclude=None):
+    '''Accepts a target, schema and fields to exclude/include
+    and creates a callable that's suitable for marshmallow.fields.Function
+    '''
+    def counter(obj):
+        _schema = get_schema(schema)
+        data = []
+        items = getattr(obj, target)
+        for item, count in items:
+           data.append(_schema(item, only=only, exclude=exclude).data)
+           data[-1]['count'] = count
+        return data
+    return counter

@@ -1,6 +1,6 @@
 from flask.ext.marshmallow import Marshmallow
 
-from .utils.schema import Polymorphic, Length
+from .utils.schema import Polymorphic, Length, counted
 
 # lowest common fields for serialized models
 common = ('id', 'name')
@@ -41,17 +41,13 @@ class ArtistSchema(BaseSchema):
         'collection' : ma.URL('artists', _external=True)
         })
 
-    top_tags = ma.Method('counted_tags')
-
-    def counted_tags(self, obj):
-        result = []
-
-        for tag, count in obj.top_tags:
-            data = TagSchema(tag, exclude=('top_artists',)).data
-            data['count'] = count
-            result.append(data)
-
-        return result
+    tags = ma.Function(
+        counted(
+            target='tags',
+            schema='TagSchema',
+            only=('id', 'name', 'links')
+            )
+        )
 
 class MemberSchema(BaseSchema):
     bio = ma.String()
@@ -61,24 +57,17 @@ class MemberSchema(BaseSchema):
         'collection' : ma.URL('members', _external=True)
         })
 
-    top_tags = ma.Method('counted_tags')
-
-    def counted_tags(self, obj):
-        result = []
-
-        for tag, count in obj.top_tags:
-            data = TagSchema(tag, exclude=('top_artists',)).data
-            data['count'] = count
-            result.append(data)
-
-        return result
-
-
+    tags = ma.Function(
+        counted(
+            target='tags', 
+            schema='TagSchema',
+            only=('id', 'name', 'links')
+            )
+        )
 
 class TrackSchema(BaseSchema):
     length = Length()
     artist = ma.Nested('ArtistSchema', only=common+('links',))
-
     tracklists = ma.Nested(
         'TracklistSchema',
         many=True,
@@ -89,7 +78,6 @@ class TrackSchema(BaseSchema):
         'stream' : ma.URL('stream.stream', stream_id='<stream>', _external=True),
         'self' : ma.URL('track', id='<id>', _external=True),
         'collection' : ma.URL('tracks', _external=True)
-
         })
 
 class TagSchema(BaseSchema):
@@ -97,14 +85,13 @@ class TagSchema(BaseSchema):
         'self' : ma.URL('tag', id='<id>', _external=True),
         'collection' : ma.URL('tags', _external=True)
         })
-    top_artists = ma.Method('counted_artists')
 
-    def counted_artists(self, obj):
-        result = []
+    artists = ma.Function(
+        counted(
+            target='artists',
+            schema='ArtistSchema',
+            only=('id', 'name', 'links')
+            )
+        )
 
-        for art, count in obj.top_artists:
-            data = ArtistSchema(art, only=common+('links',)).data
-            data['count'] = count
-            result.append(data)
-
-        return result
+    total = ma.Integer()

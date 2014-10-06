@@ -14,6 +14,27 @@ from .utils.perms import Permissions
 
 db = SQLAlchemy()
 
+def _tags(query, count):
+    '''Reusable pattern to return (<Tag>Object, <int>Count) pairs for
+    members and artists.
+
+    query: A SQLA query that represents the join between the caller and 
+        the pivot table
+    count: The field in the Pivot table that should be fed to `COUNT`.
+    page/limit: offset and limit parameters for FSQLA's paginate object.
+    '''
+
+    q = query.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
+    q = q.with_entities(
+        Tag,
+        db.func.count(count).label('count')
+        )
+    q = q.group_by(Tag.id)
+    q = q.order_by(db.desc('count'))
+    q = q.order_by(Tag.name)
+
+    return q
+
 class Member(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'members'
 
@@ -63,26 +84,8 @@ class Member(db.Model, ReprMixin, UniqueMixin):
         self.password_hash = generate_password_hash(value)
 
     @property
-    def top_tags(self):
-        tags = self.get_tags()
-        limit = current_app.config['TOP_TAG_LIMIT']
-
-        page = tags.paginate(1, limit, False)
-
-        return page.items
-
-    def get_tags(self):
-        q = self._tags
-        q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
-        q = q.with_entities(
-            Tag,
-            db.func.count(MemberTaggedArtist.artist_id).label('count')
-            )
-        q = q.group_by(Tag.id)
-        q = q.order_by(db.desc('count'))
-        q = q.order_by(Tag.name)
-
-        return q
+    def tags(self):
+        return _tags(query=self._tags, count=MemberTaggedArtist.artist_id).all()
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
@@ -112,27 +115,9 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
         )
     albums = db.relationship('Album', backref='owner', order_by='Album.name')
 
-    def get_tags(self):
-        q = self._tags
-        q = q.join(Tag, Tag.id == MemberTaggedArtist.tag_id)
-        # MemberTaggedArtist model is actually just a pivot table
-        # and just adds noise to the returned data
-        # with_entities replaces the selected entities with different ones
-        q = q.with_entities(
-            Tag,
-            db.func.count(MemberTaggedArtist.member_id).label('count')
-            )
-        q = q.group_by(Tag.id)
-        q = q.order_by(db.desc('count'))
-        q = q.order_by(Tag.name)
-
-        return q
-
     @property
-    def top_tags(self):
-        limit = current_app.config['TOP_TAG_LIMIT']
-        tags = self.get_tags().paginate(1, limit, False).items
-        return tags
+    def tags(self):
+        return _tags(query=self._tags, count=MemberTaggedArtist.member_id).all()
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
@@ -300,7 +285,14 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(64), unique=True)
 
-    def get_artists(self):
+    @property
+    def total(self):
+        '''Returns the total number of times the tag has been used
+        '''
+        return self._artists.count()
+
+    @property
+    def artists(self):
         q = self._artists
         q = q.join(Artist, Artist.id == MemberTaggedArtist.artist_id)
         q = q.with_entities(
@@ -310,14 +302,7 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
         q = q.group_by(Artist.id)
         q = q.order_by(db.desc('count'))
         q = q.order_by(Artist.name)
-
-        return q
-
-    @property
-    def top_artists(self):
-        limit = current_app.config['TOP_TAG_LIMIT']
-        tags = self.get_artists().paginate(1, limit, False).items
-        return tags
+        return q.all()
 
     @classmethod
     def unique_hash(cls, name, **kwargs):

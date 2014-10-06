@@ -44,8 +44,17 @@ class ListArtist(Resource):
 
         q = models.Artist.query.order_by(models.Artist.name)
         page = q.paginate(page, limit, False)
+        
+        serializer = schemas.ArtistSchema(
+            page.items,
+            many=True,
+            exclude=(
+                'albums',
+                'tags'
+                )
+            )
 
-        return {'artists':schemas.ArtistSchema(page.items, many=True).data}
+        return {'artists':serializer.data}
 
 
 class ListMember(Resource):
@@ -59,7 +68,7 @@ class ListMember(Resource):
         serializer = schemas.MemberSchema(
             page.items, 
             many=True,
-            exclude=('playlists', 'top_tags')
+            exclude=('playlists', 'tags')
             )
 
         return {'members' : serializer.data}
@@ -73,7 +82,11 @@ class ListTracklist(Resource):
         q = models.Tracklist.query.order_by(models.Tracklist.name)
         page = q.paginate(page, limit, False)
 
-        serializer = schemas.TracklistSchema(page.items, many=True)
+        serializer = schemas.TracklistSchema(
+            page.items, 
+            exclude=('tracks',),
+            many=True
+            )
 
         return {'tracklists' : serializer.data}
 
@@ -106,7 +119,15 @@ class ListTag(Resource):
         q = models.Tag.query.order_by(models.Tag.name)
         page = q.paginate(page, limit, False)
 
-        serializer = schemas.TagSchema(page.items, only=('id', 'name', 'links'), many=True)
+        serializer = schemas.TagSchema(
+            page.items, 
+            only=(
+                'id', 
+                'name', 
+                'links'
+                ), 
+            many=True
+            )
 
         return {'tags' : serializer.data}
 
