@@ -3,7 +3,6 @@ from uuid import uuid4
 
 from app import configs, create_app, schemas
 from app.schemas import ma
-from app import models
 
 from app.utils.tests import GenericCls, GenericObj
 
