@@ -163,12 +163,13 @@ class Track(db.Model, ReprMixin, UniqueMixin):
         default=lambda: str(uuid4())
         )
 
-    def __init__(self, name, artist, length, location):
+    def __init__(self, name, artist, length, location, stream=None):
         self.name = name
         self.artist = artist
         self.length = length
         self.location = location
         self.slug = slugger(name)
+        self.stream = stream
 
     @classmethod
     def unique_hash(cls, name, artist, location, **kwargs):
@@ -289,7 +290,7 @@ class Album(Tracklist):
         primary_key=True
         )
 
-    def __init__(self, owner, **kwargs):
+    def __init__(self, owner=None, **kwargs):
         self.owner = owner
         super().__init__(**kwargs)
 
@@ -308,7 +309,7 @@ class Playlist(Tracklist):
         primary_key=True
         )
 
-    def __init__(self, owner, **kwargs):
+    def __init__(self, owner=None, **kwargs):
         self.owner = owner
         super().__init__(**kwargs)
 

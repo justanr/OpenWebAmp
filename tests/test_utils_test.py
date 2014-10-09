@@ -37,9 +37,9 @@ class GenericTestCase(unittest.TestCase):
 
     def test_GenericCls_identity(self):
         GenericStuffCls = tests.GenericCls('Stuff', clsattrs={'x':4})
-        GenericOtherCls = tests.GenericCls('Stuff', clsattrs={'x':5})
+        GenericOtherCls = tests.GenericCls('Stuff', clsattrs={'x':4})
 
-        self.assertTrue(GenericStuffCls.x != GenericOtherCls.x)
+        self.assertFalse(GenericStuffCls is GenericOtherCls)
 
     def test_GenericObj(self):
         stuff = tests.GenericObj('Stuff', **self.stuff)

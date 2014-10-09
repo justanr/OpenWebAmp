@@ -120,17 +120,6 @@ class ArtistTestCase(ModelTestCase):
 
         self.assertTrue(thefoobars.tracks.count() == 1)
 
-    def test_top_tags(self):
-        thefoobars = models.Artist(name='The Foo Bars')
-        thefoobars._tags.append(
-            models.MemberTaggedArtist(
-                tag=self.tag,
-                member=self.member
-                )
-            )
-        db.session.commit()
-        self.assertIs(thefoobars.top_tags[0][0], self.tag)
-
 class TracklistTestCase(ModelTestCase):
     
     def setUp(self):
