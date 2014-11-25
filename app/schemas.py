@@ -42,7 +42,7 @@ class ArtistSchema(BaseSchema):
         counted(
             target='tags',
             schema='TagSchema',
-            only=('id', 'name', 'links')
+            only=('slug', 'name', 'links')
             )
         )
 
@@ -58,7 +58,7 @@ class MemberSchema(BaseSchema):
         counted(
             target='tags', 
             schema='TagSchema',
-            only=('id', 'name', 'links')
+            only=('slug', 'name', 'links')
             )
         )
 
@@ -71,7 +71,11 @@ class TrackSchema(BaseSchema):
         exclude=('tracks', 'length')
         )
     links = ma.Hyperlinks({
-        'stream' : ma.URL('stream.stream', stream_id='<stream>', _external=True),
+        'stream' : ma.URL(
+            'stream.stream',
+            stream_id='<stream>',
+            _external=True
+            ),
         'self' : ma.URL('track', slug='<slug>', _external=True),
         'collection' : ma.URL('tracks', _external=True)
         })
@@ -86,7 +90,7 @@ class TagSchema(BaseSchema):
         counted(
             target='artists',
             schema='ArtistSchema',
-            only=('id', 'name', 'links')
+            only=('slug', 'name', 'links')
             )
         )
     total = ma.Integer()
