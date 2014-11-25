@@ -29,7 +29,7 @@ class SchemaTestCase(unittest.TestCase):
 class BaseSchemaTestCase(SchemaTestCase):
 
     def setUp(self):
-        super().setUp()
+        super(BaseSchemaTestCase, self).setUp()
         self.artist = GenericObj(
             'Artist', 
             name='The Foo Bars',
