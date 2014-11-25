@@ -10,5 +10,4 @@ def stream(stream_id):
     if not track:
         abort(404)
 
-    filename = track.location
-    return send_file(filename)
+    return send_file(track.location)
