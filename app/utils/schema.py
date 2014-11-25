@@ -13,8 +13,6 @@
 
 """
 
-from functools import partial
-
 from marshmallow import fields
 from marshmallow.class_registry import get_class as get_schema
 from marshmallow.compat import basestring
@@ -42,7 +40,7 @@ def _convert_seconds_to_time(seconds, units=_time_units):
     result = []
     
     for unit in units:
-        part, seconds = seconds//unit, seconds%unit
+        part, seconds = seconds // unit, seconds % unit
         if part:
             result.append('{:0>2}'.format(part))
     
@@ -95,7 +93,7 @@ class Polymorphic(fields.Raw):
         self.default_schema = default_schema
         self.only = only
         self.exclude = exclude
-        super().__init__(**kwargs)
+        super(Polymorphic, self).__init__(**kwargs)
 
     def output(self, key, obj):
         nested_obj = self.get_value(key, obj)

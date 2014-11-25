@@ -48,7 +48,7 @@ def _unique(session, cls, hashfunc, queryfunc, constructor, *args, **kwargs):
         cache[key] = obj
         return obj
  
-class UniqueMixin:
+class UniqueMixin(object):
     '''Actually implements the unique object recipe for models.
     '''
 
@@ -82,7 +82,7 @@ class UniqueMixin:
             )
 
 
-class ReprMixin:
+class ReprMixin(object):
     '''Provides a string representible form for objects.'''
 
     # Most models will have both an id and name fields
