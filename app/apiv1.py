@@ -4,73 +4,35 @@ from flask.ext.restful import Api, Resource
 
 from . import models
 from . import schemas
+from .utils.api import SingleResource
 
 api = Api()
 
-class SingleArtist(Resource):
-    def get(self, slug):
-        slug = slug.lower()
-        q = models.Artist.query
-        q = q.filter(models.Artist.slug==slug)
-        q = q.first()
+class SingleArtist(SingleResource):
+    model = models.Artist
+    schema = schemas.ArtistSchema
+    json_root = 'artist'
 
-        if not q:
-            abort(404)
+class SingleTrack(SingleResource):
+    model = models.Track
+    schema = schemas.TrackSchema
+    json_root = 'track'
 
-        return {'artist':schemas.ArtistSchema(q).data}
+class SingleMember(SingleResource):
+    model = models.Member
+    schema = schemas.MemberSchema
+    json_root = 'member'
 
+class SingleTracklist(SingleResource):
+    model = models.Tracklist
+    schema = schemas.TracklistSchema
+    json_root = 'tracklist'
 
-
-class SingleTrack(Resource):
-    def get(self, slug):
-        slug = slug.lower()
-        q = models.Track.query
-        q = q.filter(models.Track.slug==slug)
-        q = q.first()
+class SingleTag(SingleResource):
+    model = models.Tag
+    schema = schemas.TagSchema
+    json_root = 'tag'
     
-        if not q:
-            abort(404)
-
-        return {'track':schemas.TrackSchema(q).data}
-
-
-
-class SingleMember(Resource):
-    def get(self, slug):
-        slug = slug.lower()
-        q = models.Member.query
-        q = q.filter(models.Member.slug==slug)
-        q = q.first()
-
-        if not q:
-            abort(404)
-        return {'member' : schemas.MemberSchema(q).data}
-
-
-
-class SingleTracklist(Resource):
-    def get(self, slug):
-        slug = slug.lower()
-        q = models.Tracklist.query
-        q = q.filter(models.Tracklist.slug==slug)
-        q = q.first()
-
-        if not q:
-            abort(404)
-
-        return {'tracklist' : schemas.TracklistSchema(q).data}
-
-class SingleTag(Resource):
-    def get(self, slug):
-        slug = slug.lower()
-        q = models.Tag.query
-        q = q.filter(models.Tag.slug==slug)
-        q = q.first()
-
-        if not q:
-            abort(404)
-
-        return {'tag' : schemas.TagSchema(q).data}
 
 class ListArtist(Resource):
     def get(self):
@@ -90,7 +52,6 @@ class ListArtist(Resource):
             )
 
         return {'artists':serializer.data}
-
 
 class ListMember(Resource):
     def get(self):
