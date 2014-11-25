@@ -76,7 +76,7 @@ class Member(db.Model, ReprMixin, UniqueMixin):
         self.name = name
         self.email = email
         self.password = password
-        self.slug = slugger(name)
+        self.slug = slugger(name, maxlen=32)
 
     @property
     def password(self):
@@ -121,7 +121,7 @@ class Artist(db.Model, ReprMixin, UniqueMixin):
 
     def __init__(self, name):
         self.name = name
-        self.slug = slugger(name)
+        self.slug = slugger(name, maxlen=128)
 
     @property
     def tags(self):
@@ -140,7 +140,7 @@ class Track(db.Model, ReprMixin, UniqueMixin):
     __tablename__ = 'tracks'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Unicode(128), index=True)
+    name = db.Column(db.UnicodeText, index=True)
     artist_id = db.Column(db.Integer, db.ForeignKey('artists.id'))
     length = db.Column(db.Integer)
     location = db.Column(db.Unicode, unique=True)
@@ -168,7 +168,7 @@ class Track(db.Model, ReprMixin, UniqueMixin):
         self.artist = artist
         self.length = length
         self.location = location
-        self.slug = slugger(name)
+        self.slug = slugger(name, maxlen=128)
         self.stream = stream
 
     @classmethod
@@ -249,7 +249,7 @@ class Tracklist(db.Model, ReprMixin, UniqueMixin):
 
     def __init__(self, name, tracks=None):
         self.name = name
-        self.slug = slugger(name)
+        self.slug = slugger(name, max=128)
 
         if tracks:
             self.tracks.extend(tracks)
@@ -292,7 +292,7 @@ class Album(Tracklist):
 
     def __init__(self, owner=None, **kwargs):
         self.owner = owner
-        super().__init__(**kwargs)
+        super(Album, self).__init__(**kwargs)
 
     __mapper_args__ = {
         'polymorphic_identity' : 'album',
@@ -311,7 +311,7 @@ class Playlist(Tracklist):
 
     def __init__(self, owner=None, **kwargs):
         self.owner = owner
-        super().__init__(**kwargs)
+        super(Playlist, self).__init__(**kwargs)
 
     __mapper_args__ = {
         'polymorphic_identity' : 'playlist',
@@ -327,8 +327,8 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
     slug = db.Column(db.Unicode(64), unique=True)
 
     def __init__(self, name):
-        self.name = name
-        self.slug = slugger(name)
+        self.name = name.lower()
+        self.slug = slugger(self.name, maxlen=64)
 
 
     @property
@@ -352,11 +352,11 @@ class Tag(db.Model, ReprMixin, UniqueMixin):
 
     @classmethod
     def unique_hash(cls, name, **kwargs):
-        return name
+        return name.lower()
 
     @classmethod
     def unique_func(cls, query, name, **kwargs):
-        return query.filter(cls.name == name)
+        return query.filter(cls.name == name.lower())
 
 class MemberTaggedArtist(db.Model, ReprMixin):
     __tablename__ = 'membertaggedartists'
