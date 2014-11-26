@@ -11,6 +11,16 @@ class BaseSchema(ma.Serializer):
     class Meta:
         additional = common
 
+@BaseSchema.data_handler
+def add_root(serializer, data, obj):
+    root = serializer.__class__.__name__.lower().replace('schema', '')
+    
+    if serializer.many:
+        root += 's'
+
+    return {root : data}
+
+
 class TracklistSchema(BaseSchema): 
     tracks = ma.Nested(
         'TrackSchema',
